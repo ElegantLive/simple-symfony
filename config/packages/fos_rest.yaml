@@ -18,7 +18,14 @@ fos_rest:
     format_listener:
         rules:
             - { path: '^/', priorities: ['json'], fallback_format: json }
+    routing_loader:
+        default_format: json
+        include_format: false
+    exception:
+        enabled: true
     view:
         view_response_listener: 'force'
-        format:
+        formats:
             json: true
+    body_listener:
+        default_format: json
