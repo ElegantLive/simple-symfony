@@ -10,3 +10,6 @@
 .idea/
 .vscode/
 .env
+###> symfony/web-server-bundle ###
+/.web-server-pid
+###< symfony/web-server-bundle ###
