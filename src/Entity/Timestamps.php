@@ -12,12 +12,12 @@ use Doctrine\ORM\Mapping as ORM;
 trait Timestamps
 {
     /**
-     * @ORM\Column(type="datetime")
+     * @ORM\Column(type="integer")
      */
     private $createdAt;
 
     /**
-     * @ORM\Column(type="datetime")
+     * @ORM\Column(type="integer")
      */
     private $updatedAt;
 
@@ -26,7 +26,7 @@ trait Timestamps
      */
     public function createdAt ()
     {
-        $this->createdAt = new \DateTime();
+        $this->createdAt = time();
     }
 
     /**
@@ -34,6 +34,6 @@ trait Timestamps
      */
     public function updatedAt ()
     {
-        $this->updatedAt = new \DateTime();
+        $this->updatedAt = time();
     }
 }
