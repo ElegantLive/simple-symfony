@@ -23,4 +23,15 @@ class Index extends AbstractFOSRestController
     {
         return JsonResponse::create(['msg' => 'ok']);
     }
+
+    /**
+     * @Rest\Get("second")
+     * @return array
+     */
+    public function second ()
+    {
+        return [
+            'msg' => 'OK!'
+        ];
+    }
 }
