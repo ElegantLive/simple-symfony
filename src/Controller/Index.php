@@ -33,13 +33,17 @@ class Index extends AbstractFOSRestController
     }
 
     /**
-     * @Rest\Get("/second")
+     * @Rest\Post("/second")
      * @return array
      */
     public function second ()
     {
+        $request = Request::createFromGlobals();
+        $data = $request->getContent();
+
         return [
-            'msg' => 'OK!'
+            'msg' => 'OK!',
+            'data' => $data
         ];
     }
 

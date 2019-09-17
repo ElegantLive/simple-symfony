@@ -27,5 +27,4 @@ fos_rest:
         view_response_listener: 'force'
         formats:
             json: true
-    body_listener:
-        default_format: json
+    body_listener: true

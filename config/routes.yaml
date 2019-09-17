@@ -6,3 +6,7 @@ users:
     type:       rest
     host:       symfony.local
     resource:   App\Controller\User
+task_list:
+    type:       rest
+    host:       symfony.local
+    resource:   App\Controller\TaskList
