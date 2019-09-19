@@ -10,20 +10,23 @@ namespace App\Controller;
 
 
 use App\Exception\Parameter;
+use App\Exception\Success;
 use App\Repository\TaskListRepository;
-use FOS\RestBundle\Controller\AbstractFOSRestController;
+use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\Routing\Annotation\Route;
 
 /**
  * Class TaskList
+ * @Route("list")
  * @package App\Controller
  */
-class TaskList extends AbstractFOSRestController
+class TaskList extends AbstractController
 {
     /**
      * @var TaskListRepository
      */
     private $taskListRepository;
-
 
     /**
      * TaskList constructor.
@@ -34,23 +37,32 @@ class TaskList extends AbstractFOSRestController
     }
 
     /**
-     * @return \App\Entity\TaskList[]
+     * @param Request $request
+     * @Route("", methods={"GET"})
      */
-    public function getListAction ()
+    public function info (Request $request)
     {
-        return $this->taskListRepository->findAll();
+        throw new Success(['data' => $this->taskListRepository->findAll()]);
     }
 
+    /**
+     * @param Request $request
+     * @Route("", methods={"PUT"})
+     */
     public function putListAction ()
     {
-        return ['put'];
+        $request = Request::createFromGlobals()->query;
+
+//        throw new \Exception('something was wrong!');
+        throw new Parameter(['data' => [$request->all()]]);
     }
 
     public function postListAction ()
     {
+        $request = Request::createFromGlobals();
+
 //        throw new \Exception('something was wrong!');
-        throw new Parameter();
-        return ['post'];
+        throw new Parameter(['data' => [json_decode($request->getContent(), true)]]);
     }
 
     /**

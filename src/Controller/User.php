@@ -9,9 +9,9 @@
 namespace App\Controller;
 
 
-use FOS\RestBundle\Controller\AbstractFOSRestController;
+use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 
-class User extends AbstractFOSRestController
+class User extends AbstractController
 {
     public function getUsersAction ()
     {

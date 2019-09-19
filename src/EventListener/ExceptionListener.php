@@ -131,9 +131,10 @@ use Symfony\Component\HttpKernel\Event\ExceptionEvent;
         $this->event = $event;
     }
 
+
     /**
      * @param ExceptionEvent $event
-     * @throws \Exception
+     * @return ExceptionEvent
      */
     public function onKernelException(ExceptionEvent $event)
     {
@@ -145,16 +146,14 @@ use Symfony\Component\HttpKernel\Event\ExceptionEvent;
             $this->setErrorCode($exception->getErrorCode());
             $this->setStatusCode($exception->getStatus());
 
-            $response = $this->createJsonResponse();
-            return $event->setResponse($response);
+            $event->setResponse($this->createJsonResponse());
         }
 
-        if ($this->debug) {
-            throw $exception;
-        } else {
-            $response = $this->createJsonResponse();
-            return $event->setResponse($response);
+        if (empty($this->debug)) {
+            $event->setResponse($this->createJsonResponse());
         }
+
+        return $event;
     }
 
     /**

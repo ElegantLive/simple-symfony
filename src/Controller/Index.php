@@ -9,20 +9,20 @@
 namespace App\Controller;
 
 
-use FOS\RestBundle\Controller\AbstractFOSRestController;
-use FOS\RestBundle\Controller\Annotations as Rest;
+use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\Routing\Annotation\Route;
 
 /**
  * Class Index
- * @Rest\Route("index")
+ * @Route("index")
  * @package App\Controller
  */
-class Index extends AbstractFOSRestController
+class Index extends AbstractController
 {
     /**
-     * @Rest\Get("/index")
+     * @Route("/index",methods={"GET"})
      * @return JsonResponse
      */
     public function index ()
@@ -33,7 +33,7 @@ class Index extends AbstractFOSRestController
     }
 
     /**
-     * @Rest\Post("/second")
+     * @Route("/second",methods={"POST"})
      * @return array
      */
     public function second ()
@@ -48,7 +48,7 @@ class Index extends AbstractFOSRestController
     }
 
     /**
-     * @Rest\Patch("/three")
+     * @Route("/three",methods={"PATCH"})
      */
     public function three ()
     {

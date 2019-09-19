@@ -1,12 +1,3 @@
 #index:
 #    path: /
 #    controller: App\Controller\DefaultController::index
-
-users:
-    type:       rest
-    host:       symfony.local
-    resource:   App\Controller\User
-task_list:
-    type:       rest
-    host:       symfony.local
-    resource:   App\Controller\TaskList
