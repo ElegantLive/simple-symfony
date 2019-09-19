@@ -149,10 +149,12 @@ class Exception
             $event->setResponse($this->createJsonResponse());
         }
 
-        if (empty($this->debug)) {
-            $event->setResponse($this->createJsonResponse());
+        if ($this->debug) {
+            return $event;
         }
 
+        // do something else ...
+        $event->setResponse($this->createJsonResponse());
         return $event;
     }
 
