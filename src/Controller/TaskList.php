@@ -18,7 +18,7 @@ use Symfony\Component\Routing\Annotation\Route;
 
 /**
  * Class TaskList
- * @Route("list")
+ * @Route("/list")
  * @package App\Controller
  */
 class TaskList extends AbstractController
@@ -38,11 +38,12 @@ class TaskList extends AbstractController
 
     /**
      * @param Request $request
-     * @Route("", methods={"GET"})
+     * @Route("", methods={"POST"})
      */
     public function info (Request $request)
     {
-        throw new Success(['data' => $this->taskListRepository->findAll()]);
+//        throw new \Exception('something was wrong!');
+        throw new Parameter(['data' => [$request->request->all()]]);
     }
 
     /**

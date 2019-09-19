@@ -13,9 +13,10 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpKernel\Event\ExceptionEvent;
 
 /**
- * Class ExceptionListener
+ * Class Exception
  * @package App\EventListener
- */class ExceptionListener
+ */
+class Exception
 {
     /**
      * @var
@@ -130,7 +131,6 @@ use Symfony\Component\HttpKernel\Event\ExceptionEvent;
     {
         $this->event = $event;
     }
-
 
     /**
      * @param ExceptionEvent $event

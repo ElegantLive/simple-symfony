@@ -29,7 +29,7 @@ services:
     # please note that last definitions always *replace* previous ones
 
     # design exception handler
-    App\EventListener\ExceptionListener:
+    App\EventListener\Exception:
         tags:
             - { name: kernel.event_listener, event: kernel.exception }
         arguments:
