@@ -59,7 +59,7 @@ class Base extends HttpException
     public function __construct (array $errorData = [], int $statusCode = 0, \Throwable $previous = null)
     {
         foreach ($this->accessKey as $key => $value) {
-            if (array_key_exists($value, $errorData)) $this->$value = $errorData[$value];
+            if (empty($errorData[$value]) == false) $this->$value = $errorData[$value];
         }
 
         if ($statusCode) $this->setStatus($statusCode);

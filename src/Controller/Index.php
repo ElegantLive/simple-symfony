@@ -9,8 +9,9 @@
 namespace App\Controller;
 
 
+use App\Exception\Success;
+use App\Validator\Example;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
-use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Annotation\Route;
 
@@ -23,13 +24,16 @@ class Index extends AbstractController
 {
     /**
      * @Route("/index",methods={"GET"})
-     * @return JsonResponse
+     * @throws \Exception
      */
     public function index ()
     {
-        $data = Request::createFromGlobals();
+        $request = Request::createFromGlobals();
 
-        return JsonResponse::create(['msg' => $data->getContent()]);
+        $data = $request->query->all();
+        (new Example())->check($data);
+
+        throw new Success(['data' => $data]);
     }
 
     /**
