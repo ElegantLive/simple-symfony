@@ -11,7 +11,6 @@ namespace App\Validator;
 
 use App\Exception\Parameter;
 use Symfony\Component\Validator\Constraints\Collection;
-use Symfony\Component\Validator\Constraints\ValidValidator;
 use Symfony\Component\Validator\Validation;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 
@@ -29,30 +28,30 @@ class Base
     /**
      * @var ValidatorInterface
      */
-    protected $validator;
+    protected static $validator;
 
     /**
      * @return ValidatorInterface
      */
-    public function getValidator ()
+    protected function getValidator ()
     {
-        return $this->validator;
+        return Base::$validator;
     }
 
-    public function setValidator (): void
+    protected function setValidator (): void
     {
-        $this->validator = Validation::createValidator();
+        Base::$validator = Validation::createValidator();
     }
 
     /**
      * @return Collection
      */
-    public function getCollection ()
+    protected function getCollection ()
     {
         return $this->collection;
     }
 
-    public function setCollection ()
+    protected function setCollection ()
     {
     }
 
@@ -60,12 +59,10 @@ class Base
      * Base constructor.
      */
     public function __construct () {
-        if (empty(self::getValidator() instanceof ValidValidator)) {
+        if (empty(self::getValidator() instanceof ValidatorInterface)) {
             self::setValidator();
         }
         static::setCollection();
-
-        return self::getValidator();
     }
 
     /**
@@ -76,17 +73,15 @@ class Base
     {
         $res = self::getValidator()->validate($input, self::getCollection());
 
-        if ($res) {
-            $message = '';
+        $message = '';
 
-            foreach ($res as $item) {
-                $prefix = empty($message) ? '': ';';
+        foreach ($res as $item) {
+            $prefix = empty($message) ? '': ';';
 
-                $message .= $prefix . $item->getMessage();
-            }
-
-            if ($message) throw new Parameter(['message' => $message]);
+            $message .= $prefix . $item->getMessage();
         }
+
+        if ($message) throw new Parameter(['message' => $message]);
     }
 
 }
