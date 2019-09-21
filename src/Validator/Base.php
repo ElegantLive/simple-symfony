@@ -8,7 +8,7 @@
 
 namespace App\Validator;
 
-
+use Exception;
 use App\Exception\Parameter;
 use Symfony\Component\Validator\Constraints\Collection;
 use Symfony\Component\Validator\Validation;
@@ -71,6 +71,9 @@ class Base
      */
     public function check (array $input)
     {
+        $collection = self::getCollection();
+        if (empty($collection)) throw new Exception('please configure collection!');
+
         $res = self::getValidator()->validate($input, self::getCollection());
 
         $message = '';
