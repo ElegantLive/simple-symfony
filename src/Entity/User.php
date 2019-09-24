@@ -13,6 +13,11 @@ class User
     use Timestamps;
     use Password;
 
+    public static $sexScope = [
+        'MAN' => '♂',
+        'WOMEN' => '♀'
+    ];
+
     /**
      * @ORM\Id()
      * @ORM\GeneratedValue()
@@ -53,7 +58,7 @@ class User
     /**
      * @ORM\Column(type="string", columnDefinition="enum('MAN', 'WOMEN')")
      */
-    private $sex;
+    private $sex = 'MAN';
 
     public function getId(): ?int
     {
@@ -114,7 +119,6 @@ class User
     }
 
     /**
-     * @ORM\PrePersist()
      * @param string $password
      * @return User
      */
@@ -131,7 +135,6 @@ class User
     }
 
     /**
-     * @ORM\PrePersist()
      * @return User
      */
     public function setRand(): self
@@ -143,7 +146,7 @@ class User
 
     public function getSex(): ?string
     {
-        return $this->sex;
+        return self::$sexScope[$this->sex];
     }
 
     public function setSex(string $sex): self

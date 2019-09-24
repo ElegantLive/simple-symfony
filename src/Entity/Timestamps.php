@@ -27,6 +27,7 @@ trait Timestamps
     public function createdAt ()
     {
         $this->createdAt = time();
+        $this->updatedAt = time();
     }
 
     /**

@@ -10,4 +10,5 @@ use Symfony\Component\Validator\Constraint;
 class Password extends Constraint
 {
     public $message = '请输入8-16位，含字母、数字的密码';
+//    public $groups = ["resetPwd", "register", "login"];
 }

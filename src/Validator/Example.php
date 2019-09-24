@@ -14,7 +14,7 @@ use Symfony\Component\Validator\Constraints as Assert;
 
 class Example extends Base
 {
-    public function setCollection ()
+    protected function setCollection ()
     {
         $this->collection = new Assert\Collection([
             'mobile' => new Mobile()
