@@ -9,34 +9,36 @@
 namespace App\Controller;
 
 
+use App\Repository\UserRepository;
+use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\Request;
 
 class User extends AbstractController
 {
-    public function getUsersAction ()
+    /**
+     * @var UserRepository
+     */
+    private $userRepository;
+    /**
+     * @var EntityManagerInterface
+     */
+    private $entityManager;
+
+
+    /**
+     * User constructor.
+     * @param UserRepository         $userRepository
+     * @param EntityManagerInterface $entityManager
+     */
+    public function __construct (UserRepository $userRepository, EntityManagerInterface $entityManager)
     {
-        return [
-            'user' => '?'
-        ];
+        $this->userRepository = $userRepository;
+        $this->entityManager = $entityManager;
     }
 
-    public function putUsersAction ()
+    public function register (Request $request)
     {
-        return ['put'];
-    }
 
-    public function postUsersAction ()
-    {
-        return ['post'];
-    }
-
-    public function deleteUsersAction ()
-    {
-        return ['delete'];
-    }
-
-    public function patchUsersAction ()
-    {
-        return ['patch'];
     }
 }

@@ -20,13 +20,24 @@ use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Validator\Validation;
 
+/**
+ * Class Rule
+ * @package App\Make
+ */
 class Rule extends AbstractMaker
 {
+    /**
+     * @return string
+     */
     public static function getCommandName (): string
     {
         return 'make:rule';
     }
 
+    /**
+     * @param Command            $command
+     * @param InputConfiguration $inputConfig
+     */
     public function configureCommand (Command $command, InputConfiguration $inputConfig)
     {
         $command
@@ -35,9 +46,14 @@ class Rule extends AbstractMaker
             ->setHelp(file_get_contents(__DIR__.'/../../vendor/symfony/maker-bundle/src/Resources/help/MakeValidator.txt'));
     }
 
+    /**
+     * @param InputInterface $input
+     * @param ConsoleStyle   $io
+     * @param Generator      $generator
+     * @throws \Exception
+     */
     public function generate (InputInterface $input, ConsoleStyle $io, Generator $generator)
     {
-
         $validatorClassNameDetails = $generator->createClassNameDetails(
             $input->getArgument('name'),
             'Rule\\',
@@ -70,6 +86,9 @@ class Rule extends AbstractMaker
         ]);
     }
 
+    /**
+     * @param DependencyBuilder $dependencies
+     */
     public function configureDependencies (DependencyBuilder $dependencies)
     {
         $dependencies->addClassDependency(

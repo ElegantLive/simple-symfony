@@ -5,15 +5,17 @@ namespace App\Rule;
 use Symfony\Component\Validator\Constraint;
 use Symfony\Component\Validator\ConstraintValidator;
 
-class MobileValidator extends ConstraintValidator
+class PasswordValidator extends ConstraintValidator
 {
     public function validate($value, Constraint $constraint)
     {
-        /* @var $constraint \App\Rule\Mobile */
+        /* @var $constraint \App\Rule\Password */
         if (empty($value)) return;
 
-        $rule = '^1(3|4|5|7|8)[0-9]\d{8}$^';
-        $res = preg_match($rule, $value);
+        $r1 = '^[a-z]$^';
+        $r2 = '^[A-Z]$^';
+        $r3 = '^[0-9]$^';
+        $res = (preg_match($r1,$value) || preg_match($r2,$value) || preg_match($r3,$value));
 
         if (empty($res)) {
             $this->context

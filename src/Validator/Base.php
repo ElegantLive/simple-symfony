@@ -18,7 +18,7 @@ use Symfony\Component\Validator\Validator\ValidatorInterface;
  * Class Base
  * @package App\Validator
  */
-class Base
+abstract class Base
 {
     /**
      * @var Collection
@@ -51,9 +51,7 @@ class Base
         return $this->collection;
     }
 
-    protected function setCollection ()
-    {
-    }
+    abstract protected function setCollection ();
 
     /**
      * Base constructor.
