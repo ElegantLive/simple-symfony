@@ -9,6 +9,7 @@
 namespace App\Controller;
 
 
+use App\Entity\ToArray;
 use App\Exception\Success;
 use App\Repository\UserRepository;
 use App\Validator\Register;
@@ -69,5 +70,17 @@ class User extends AbstractController
         $this->entityManager->flush();
 
         throw new Success();
+    }
+
+    /**
+     * @Route("/info", methods={"GET"})
+     */
+    public function info ()
+    {
+        $id = \App\Service\Token::getCurrentTokenKey('id');
+
+        $user = $this->userRepository->findOneBy(['id' => $id]);
+
+        throw new Success(['data' => $user->toArray($user)]);
     }
 }

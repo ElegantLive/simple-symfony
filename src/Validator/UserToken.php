@@ -18,8 +18,12 @@ class UserToken extends Base
     protected function setCollection ()
     {
         $this->collection = new Assert\Collection([
-            'mobile' => new Mobile(),
-            'password' => new Password()
+            'mobile' => new Assert\Required([
+                new Mobile()
+            ]),
+            'password' => new Assert\Required([
+                new Password()
+            ])
         ]);
     }
 }

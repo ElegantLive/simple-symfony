@@ -70,7 +70,7 @@ abstract class Token
         $token = self::generateKey();
         $tokenItem = self::getCache()->getItem($token);
         $tokenItem->set($var);
-        $tokenItem->expiresAfter(30);
+        $tokenItem->expiresAfter(3000);
 
         self::getCache()->save($tokenItem);
 
@@ -92,10 +92,9 @@ abstract class Token
     public static function getCurrentTokenKey (string $key)
     {
         $item = static::getCache()->getItem(self::getTokenFromRequest());
-        if ($item->isHit()) throw new \App\Exception\Token();
+        if (empty($item->isHit())) throw new \App\Exception\Token();
 
         $var = $item->get();
-
         if (isset($var[$key])) return $var[$key];
 
         throw new \App\Exception\Token(['message' => '尝试获取的key不存在']);

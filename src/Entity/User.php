@@ -12,6 +12,7 @@ class User
 {
     use Timestamps;
     use Password;
+    use ToArray;
 
     public static $sexScope = [
         'MAN' => '♂',
@@ -124,7 +125,7 @@ class User
      */
     public function setPassword(string $password): self
     {
-        $this->password = $this->encodeSecret($password . self::getRand());
+        $this->password = $this->encodePassword($password);
 
         return $this;
     }
@@ -154,5 +155,12 @@ class User
         $this->sex = $sex;
 
         return $this;
+    }
+
+    public function encodePassword (string $password = '', string $rand = '')
+    {
+        $password = empty($password) ? self::getPassword(): $password;
+        $rand = empty($rand) ? self::getRand(): $rand;
+        return $this->encodeSecret($password, $rand);
     }
 }

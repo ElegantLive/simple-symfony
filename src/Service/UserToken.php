@@ -9,7 +9,6 @@
 namespace App\Service;
 
 
-use App\Entity\User;
 use App\Repository\UserRepository;
 use Doctrine\ORM\EntityManagerInterface;
 
@@ -39,10 +38,12 @@ class UserToken extends Token
         $res = $this->userRepository->findOneBy($map);
         if (empty($res)) throw new \App\Exception\Token(['message' => '账号错误']);
 
-        if ($res['password'] != (new User())->encodeSecret($data['password'])) throw new \App\Exception\Token(['message' => '密码错误']);
+        if ($res->getPassword() != $res->encodePassword($data['password'], $res->getRand())){
+            throw new \App\Exception\Token(['message' => '密码错误']);
+        }
 
         $token = self::generate([
-            'id' => $res['id']
+            'id' => $res->getId()
         ]);
 
         return $token;

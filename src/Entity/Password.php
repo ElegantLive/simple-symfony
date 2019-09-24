@@ -8,8 +8,8 @@
 namespace App\Entity;
 
 trait Password {
-    public function encodeSecret (string $secret)
+    public function encodeSecret (string $secret, string $rand = '')
     {
-        return md5($secret . 'doSomethingElse');
+        return md5($secret . 'doSomethingElse' . $rand);
     }
 }
