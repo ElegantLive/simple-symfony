@@ -77,7 +77,7 @@ abstract class Base
         $message = '';
 
         foreach ($res as $item) {
-            $prefix = empty($message) ? '': ';';
+            $prefix = empty($message) ? '': '; ';
 
             $message .= $prefix . $item->getMessage();
         }
