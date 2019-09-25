@@ -3,9 +3,9 @@
 namespace App\Controller;
 
 use App\Exception\Success;
+use App\Service\Request;
 use App\Service\UserToken;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
-use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Annotation\Route;
 
 /**
@@ -23,7 +23,7 @@ class Token extends AbstractController
      */
     public function user (Request $request, UserToken $userToken)
     {
-        $data = $request->request->all();
+        $data = $request->getPayload();
 
         (new \App\Validator\UserToken())->check($data);
 

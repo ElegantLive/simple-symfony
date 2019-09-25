@@ -9,13 +9,12 @@
 namespace App\Controller;
 
 
-use App\Entity\ToArray;
 use App\Exception\Success;
 use App\Repository\UserRepository;
+use App\Service\Request;
 use App\Validator\Register;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
-use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Annotation\Route;
 
 /**
@@ -48,12 +47,12 @@ class User extends AbstractController
 
     /**
      * @Route("/register", methods={"POST"})
-     * @param Request          $request
+     * @param Request $request
      * @throws \Exception
      */
     public function register (Request $request)
     {
-        $data = $request->request->all();
+        $data = $request->getData();
         (new Register())->check($data);
 
         $user = new \App\Entity\User();
@@ -74,10 +73,11 @@ class User extends AbstractController
 
     /**
      * @Route("/info", methods={"GET"})
+     * @param \App\Service\Token $token
      */
-    public function info ()
+    public function info (\App\Service\Token $token)
     {
-        $id = \App\Service\Token::getCurrentTokenKey('id');
+        $id = $token->getCurrentTokenKey('id');
 
         $user = $this->userRepository->findOneBy(['id' => $id]);
 

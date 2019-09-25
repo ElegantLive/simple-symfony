@@ -12,13 +12,12 @@ namespace App\Service;
 use App\Exception\Forbidden;
 use Faker\Factory;
 use Symfony\Component\Cache\Adapter\RedisAdapter;
-use Symfony\Component\HttpFoundation\Request;
 
 /**
  * Class Token
  * @package App\Service
  */
-abstract class Token
+class Token
 {
     /**
      * 作用域
@@ -29,6 +28,19 @@ abstract class Token
      * @var RedisAdapter;
      */
     private static $cache;
+    /**
+     * @var Request
+     */
+    private $request;
+
+    /**
+     * Token constructor.
+     * @param Request $request
+     */
+    public function __construct (Request $request)
+    {
+        $this->request = $request;
+    }
 
     /**
      * @return RedisAdapter
@@ -44,25 +56,20 @@ abstract class Token
         return Token::$cache;
     }
 
-    /**
-     * @param array $data
-     * @return mixed
-     */
-    abstract public function getToken (array $data);
-
     public function cleanToken () {
         self::getCache()->deleteItem(self::getTokenFromRequest());
     }
 
     /**
      * @param array $var
+     * @param int   $scope
      * @return string
      */
-    protected function generate (array $var)
+    public function generate (array $var, int $scope = self::SCOPE)
     {
         $data = [
             'expire' => time(),
-            'scope' => static::SCOPE,
+            'scope' => $scope,
         ];
 
         $var = array_merge($var, $data);
@@ -89,7 +96,7 @@ abstract class Token
      * @param string $key
      * @return mixed
      */
-    public static function getCurrentTokenKey (string $key)
+    public function getCurrentTokenKey (string $key)
     {
         $item = static::getCache()->getItem(self::getTokenFromRequest());
         if (empty($item->isHit())) throw new \App\Exception\Token();
@@ -101,44 +108,21 @@ abstract class Token
     }
 
     /**
-     * @param string $type
+     * @param int $scope
      */
-    public static function authentication (string $type)
+    public function authentication (int $scope)
     {
-        $scope = self::getIdentity($type);
         $varScope = self::getCurrentTokenKey('scope');
 
         if ($varScope != $scope) throw new Forbidden();
     }
 
     /**
-     * @param string $key
-     * @return mixed
-     */
-    protected static function getIdentity(string $key)
-    {
-        $identityArr = [
-            'user' => UserToken::SCOPE,
-        ];
-
-        if (array_key_exists($key, $identityArr)) {
-            return $identityArr[$key];
-        }
-
-        throw new \App\Exception\Token([
-            'message' => '校验的身份不存在',
-            'errorCode' => 10002
-        ]);
-    }
-
-    /**
      * @return null|string|string[]
      */
-    private static function getTokenFromRequest ()
+    private function getTokenFromRequest ()
     {
-        $request = Request::createFromGlobals();
-
-        $token = $request->headers->get('token');
+        $token = $this->request->headers->get('token');
         if (empty($token)) throw new \App\Exception\Token();
 
         return $token;

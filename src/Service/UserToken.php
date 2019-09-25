@@ -10,10 +10,16 @@ namespace App\Service;
 
 
 use App\Repository\UserRepository;
-use Doctrine\ORM\EntityManagerInterface;
 
-class UserToken extends Token
+/**
+ * Class UserToken
+ * @package App\Service
+ */
+class UserToken
 {
+    /**
+     * 作用域
+     */
     const SCOPE = 16;
 
     /**
@@ -22,16 +28,25 @@ class UserToken extends Token
     private $userRepository;
 
     /**
-     * @var EntityManagerInterface
+     * @var Token
      */
-    private $entityManager;
+    private $token;
 
-    public function __construct (UserRepository $userRepository, EntityManagerInterface $entityManager)
+    /**
+     * UserToken constructor.
+     * @param UserRepository $userRepository
+     * @param Token          $token
+     */
+    public function __construct (UserRepository $userRepository, Token $token)
     {
         $this->userRepository = $userRepository;
-        $this->entityManager = $entityManager;
+        $this->token = $token;
     }
 
+    /**
+     * @param array $data
+     * @return string
+     */
     public function getToken (array $data)
     {
         $map = ['mobile' => $data['mobile']];
@@ -42,7 +57,7 @@ class UserToken extends Token
             throw new \App\Exception\Token(['message' => '密码错误']);
         }
 
-        $token = self::generate([
+        $token = $this->token->generate([
             'id' => $res->getId()
         ]);
 
