@@ -9,9 +9,11 @@
 namespace App\Exception;
 
 
+use Symfony\Component\HttpFoundation\Response;
+
 class Success extends Base
 {
-    protected $status = 200;
+    protected $status = Response::HTTP_OK;
     protected $message = 'OK';
     protected $errorCode = 0;
 }

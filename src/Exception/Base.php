@@ -9,6 +9,7 @@
 namespace App\Exception;
 
 
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
 /**
@@ -21,7 +22,7 @@ class Base extends HttpException
      * 返回的http状态码
      * @var int
      */
-    protected $status = 500;
+    protected $status = Response::HTTP_INTERNAL_SERVER_ERROR;
 
     /**
      * 错误信息
