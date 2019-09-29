@@ -122,7 +122,7 @@ class Token
      */
     private function getTokenFromRequest ()
     {
-        $token = $this->request->headers->get('token');
+        $token = $this->request->request->headers->get('token');
         if (empty($token)) throw new \App\Exception\Token();
 
         return $token;
