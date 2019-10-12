@@ -24,13 +24,19 @@ class Request
      * @var RequestBase
      */
     public $request;
+    /**
+     * @var Serializer
+     */
+    private $serializer;
 
     /**
      * Request constructor.
+     * @param Serializer $serializer
      */
-    public function __construct ()
+    public function __construct (Serializer $serializer)
     {
         $this->request = RequestBase::createFromGlobals();
+        $this->serializer = $serializer;
         self::initPayload();
     }
 
@@ -60,7 +66,7 @@ class Request
     public function initPayload (): void
     {
         if (false !== strpos($this->request->getContentType(), 'json')) {
-            $this->payload = (array) json_decode($this->request->getContent(), true);
+            $this->payload = $this->serializer->toArray($this->request->getContent(), 'json');
         }
     }
 

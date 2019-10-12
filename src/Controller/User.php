@@ -12,6 +12,7 @@ namespace App\Controller;
 use App\Exception\Success;
 use App\Repository\UserRepository;
 use App\Service\Request;
+use App\Service\Serializer;
 use App\Validator\Register;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -42,7 +43,7 @@ class User extends AbstractController
     public function __construct (UserRepository $userRepository, EntityManagerInterface $entityManager)
     {
         $this->userRepository = $userRepository;
-        $this->entityManager = $entityManager;
+        $this->entityManager  = $entityManager;
     }
 
     /**
@@ -73,14 +74,26 @@ class User extends AbstractController
 
     /**
      * @Route("/info", methods={"GET"})
-     * @param \App\Service\Token $token
+     * @param \App\Service\Token      $token
+     * @param \App\Service\Serializer $serializer
      */
-    public function info (\App\Service\Token $token)
+    public function info (\App\Service\Token $token, Serializer $serializer)
     {
         $id = $token->getCurrentTokenKey('id');
 
         $user = $this->userRepository->findOneBy(['id' => $id]);
 
-        throw new Success(['data' => $user->toArray($user)]);
+        throw new Success(['data' => $serializer->normalize($user, 'json')]);
+    }
+
+    /**
+     * @Route("/list", methods={"GET"})
+     * @param \App\Service\Serializer $serializer
+     */
+    public function list (Serializer $serializer)
+    {
+        $users = $this->userRepository->findAll();
+
+        throw new Success(['data' => $serializer->normalize($users, 'json')]);
     }
 }

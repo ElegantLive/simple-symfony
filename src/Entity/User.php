@@ -12,7 +12,6 @@ class User
 {
     use Timestamps;
     use Password;
-    use ToArray;
 
     public static $sexScope = [
         'MAN' => '♂',

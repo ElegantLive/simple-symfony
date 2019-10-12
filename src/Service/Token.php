@@ -99,7 +99,7 @@ class Token
     public function getCurrentTokenKey (string $key)
     {
         $item = static::getCache()->getItem(self::getTokenFromRequest());
-        if (empty($item->isHit())) throw new \App\Exception\Token();
+        if (empty($item->isHit())) throw new \App\Exception\Token(['message' => 'token已失效']);
 
         $var = $item->get();
         if (isset($var[$key])) return $var[$key];
@@ -123,7 +123,7 @@ class Token
     private function getTokenFromRequest ()
     {
         $token = $this->request->request->headers->get('token');
-        if (empty($token)) throw new \App\Exception\Token();
+        if (empty($token)) throw new \App\Exception\Token(['message' => '尝试获取的key不存在']);
 
         return $token;
     }
