@@ -12,8 +12,8 @@ namespace App\Controller;
 use App\Exception\Success;
 use App\Validator\Example;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
-use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Annotation\Route;
+use App\Service\Request;
 
 /**
  * Class Index
@@ -23,41 +23,41 @@ use Symfony\Component\Routing\Annotation\Route;
 class Index extends AbstractController
 {
     /**
-     * @Route("/index",methods={"GET"})
+     * @Route("/index",methods={"PUT"})
+     * @param Request $request
      * @throws \Exception
      */
-    public function index ()
+    public function index (Request $request)
     {
-        $request = Request::createFromGlobals();
-
-        $data = $request->query->all();
+        $data = $request->getData();
         (new Example())->check($data);
 
         throw new Success(['data' => $data]);
     }
 
     /**
-     * @Route("/second",methods={"POST"})
-     * @return array
+     * @Route("/second",methods={"DELETE"})
+     * @param Request $request
+     * @throws \Exception
      */
-    public function second ()
+    public function second (Request $request)
     {
-        $request = Request::createFromGlobals();
-        $data = $request->getContent();
+        $data = $request->request->query->all();
+        (new Example())->check($data);
 
-        return [
-            'msg' => 'OK!',
-            'data' => $data
-        ];
+        throw new Success(['data' => $data]);
     }
 
     /**
      * @Route("/three",methods={"PATCH"})
+     * @param Request $request
+     * @throws \Exception
      */
-    public function three ()
+    public function three (Request $request)
     {
-        return [
-            'msg' => 'three'
-        ];
+        $data = $request->getData();
+        (new Example())->check($data);
+
+        throw new Success(['data' => $data]);
     }
 }

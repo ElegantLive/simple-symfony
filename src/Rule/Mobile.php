@@ -9,5 +9,5 @@ use Symfony\Component\Validator\Constraint;
  */
 class Mobile extends Constraint
 {
-    public $message = 'please input mobile';
+    public $message = 'mobile is not valid.';
 }

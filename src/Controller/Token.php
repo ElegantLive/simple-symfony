@@ -23,7 +23,7 @@ class Token extends AbstractController
      */
     public function user (Request $request, UserToken $userToken)
     {
-        $data = $request->getPayload();
+        $data = $request->getData();
 
         (new \App\Validator\UserToken())->check($data);
 
