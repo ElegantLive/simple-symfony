@@ -15,5 +15,5 @@ class Parameter extends Base
 {
     protected $status = Response::HTTP_BAD_REQUEST;
     protected $errorCode = 10000;
-    protected $message = "参数错误";
+    protected $message = "invalid parameters";
 }
