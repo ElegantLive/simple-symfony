@@ -14,7 +14,7 @@ class User
     use Password;
 
     public static $sexScope = [
-        'MAN' => '♂',
+        'MAN'   => '♂',
         'WOMEN' => '♀'
     ];
 
@@ -60,60 +60,60 @@ class User
      */
     private $sex = 'MAN';
 
-    public function getId(): ?int
+    public function getId (): ?int
     {
         return $this->id;
     }
 
-    public function getName(): ?string
+    public function getName (): ?string
     {
         return $this->name;
     }
 
-    public function setName(string $name): self
+    public function setName (string $name): self
     {
         $this->name = $name;
 
         return $this;
     }
 
-    public function getMobile(): ?string
+    public function getMobile (): ?string
     {
         return $this->mobile;
     }
 
-    public function setMobile(string $mobile): self
+    public function setMobile (string $mobile): self
     {
         $this->mobile = $mobile;
 
         return $this;
     }
 
-    public function getEmail(): ?string
+    public function getEmail (): ?string
     {
         return $this->email;
     }
 
-    public function setEmail(string $email): self
+    public function setEmail (string $email): self
     {
         $this->email = $email;
 
         return $this;
     }
 
-    public function getAvatar(): ?string
+    public function getAvatar (): ?string
     {
         return $this->avatar;
     }
 
-    public function setAvatar(?string $avatar): self
+    public function setAvatar (?string $avatar): self
     {
         $this->avatar = $avatar;
 
         return $this;
     }
 
-    public function getPassword(): ?string
+    public function getPassword (): ?string
     {
         return $this->password;
     }
@@ -122,14 +122,14 @@ class User
      * @param string $password
      * @return User
      */
-    public function setPassword(string $password): self
+    public function setPassword (string $password): self
     {
         $this->password = $this->encodePassword($password);
 
         return $this;
     }
 
-    public function getRand(): ?string
+    public function getRand (): ?string
     {
         return $this->rand;
     }
@@ -137,19 +137,19 @@ class User
     /**
      * @return User
      */
-    public function setRand(): self
+    public function setRand (): self
     {
         $this->rand = rand(10000000, 99999999);
 
         return $this;
     }
 
-    public function getSex(): ?string
+    public function getSex (): ?string
     {
         return self::$sexScope[$this->sex];
     }
 
-    public function setSex(string $sex): self
+    public function setSex (string $sex): self
     {
         $this->sex = $sex;
 
@@ -158,8 +158,8 @@ class User
 
     public function encodePassword (string $password = '', string $rand = '')
     {
-        $password = empty($password) ? self::getPassword(): $password;
-        $rand = empty($rand) ? self::getRand(): $rand;
+        $password = empty($password) ? self::getPassword() : $password;
+        $rand     = empty($rand) ? self::getRand() : $rand;
         return $this->encodeSecret($password, $rand);
     }
 }

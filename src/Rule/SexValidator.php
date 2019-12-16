@@ -8,7 +8,7 @@ use Symfony\Component\Validator\ConstraintValidator;
 
 class SexValidator extends ConstraintValidator
 {
-    public function validate($value, Constraint $constraint)
+    public function validate ($value, Constraint $constraint)
     {
         /* @var $constraint \App\Rule\Sex */
 
@@ -16,7 +16,7 @@ class SexValidator extends ConstraintValidator
             return;
         }
 
-        if (empty(array_key_exists($value, User::$sexScope)))  {
+        if (empty(array_key_exists($value, User::$sexScope))) {
             $this->context
                 ->buildViolation($constraint->message)
                 ->setParameter('{{ value }}', $value)

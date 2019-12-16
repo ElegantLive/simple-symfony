@@ -21,6 +21,7 @@ class Token
 {
     /**
      * 作用域
+     * @var
      */
     const SCOPE = 16;
 
@@ -28,6 +29,7 @@ class Token
      * @var RedisAdapter;
      */
     private static $cache;
+
     /**
      * @var Request
      */
@@ -48,15 +50,14 @@ class Token
     private static function getCache ()
     {
         if ((Token::$cache instanceof RedisAdapter) == false) {
-            $client = RedisAdapter::createConnection(
-                'redis://localhost:6379'
-            );
+            $client       = RedisAdapter::createConnection('redis://localhost:6379');
             Token::$cache = new RedisAdapter($client);
         }
         return Token::$cache;
     }
 
-    public function cleanToken () {
+    public function cleanToken ()
+    {
         self::getCache()->deleteItem(self::getTokenFromRequest());
     }
 
@@ -69,12 +70,12 @@ class Token
     {
         $data = [
             'expire' => time(),
-            'scope' => $scope,
+            'scope'  => $scope,
         ];
 
         $var = array_merge($var, $data);
 
-        $token = self::generateKey();
+        $token     = self::generateKey();
         $tokenItem = self::getCache()->getItem($token);
         $tokenItem->set($var);
         $tokenItem->expiresAfter(3000);
@@ -122,7 +123,7 @@ class Token
      */
     private function getTokenFromRequest ()
     {
-        $token = $this->request->request->headers->get('token');
+        $token = $this->request->getRequest()->headers->get('token');
         if (empty($token)) throw new \App\Exception\Token(['message' => '尝试获取的key不存在']);
 
         return $token;

@@ -5,6 +5,7 @@
  * Date: 2019/9/12
  * Time: 16:07
  */
+
 namespace App\Entity;
 
 use Doctrine\ORM\Mapping as ORM;

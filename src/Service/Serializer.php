@@ -28,8 +28,9 @@ class Serializer
     /**
      * Serializer constructor.
      */
-    public function __construct () {
-        $encoders = [new JsonDecode()];
+    public function __construct ()
+    {
+        $encoders    = [new JsonDecode()];
         $normalizers = [new ObjectNormalizer()];
 
         self::$serializer = new BaseSerializer($normalizers, $encoders);
@@ -42,7 +43,7 @@ class Serializer
      */
     public function toArray ($obj, $format): array
     {
-        return (array) self::$serializer->decode($obj, $format);
+        return (array)self::$serializer->decode($obj, $format);
     }
 
     /**

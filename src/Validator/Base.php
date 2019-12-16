@@ -56,7 +56,8 @@ abstract class Base
     /**
      * Base constructor.
      */
-    public function __construct () {
+    public function __construct ()
+    {
         if (empty(self::getValidator() instanceof ValidatorInterface)) {
             self::setValidator();
         }
@@ -77,7 +78,7 @@ abstract class Base
         $message = '';
 
         foreach ($res as $item) {
-            $prefix = empty($message) ? '': '; ';
+            $prefix = empty($message) ? '' : '; ';
 
             $message .= $prefix . $item->getMessage();
         }

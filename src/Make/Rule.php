@@ -40,10 +40,9 @@ class Rule extends AbstractMaker
      */
     public function configureCommand (Command $command, InputConfiguration $inputConfig)
     {
-        $command
-            ->setDescription('Creates a new validator and constraint class')
+        $command->setDescription('Creates a new validator and constraint class')
             ->addArgument('name', InputArgument::OPTIONAL, 'The name of the validator class (e.g. <fg=yellow>EnabledValidator</>)')
-            ->setHelp(file_get_contents(__DIR__.'/../../vendor/symfony/maker-bundle/src/Resources/help/MakeValidator.txt'));
+            ->setHelp(file_get_contents(__DIR__ . '/../../vendor/symfony/maker-bundle/src/Resources/help/MakeValidator.txt'));
     }
 
     /**

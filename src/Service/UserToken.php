@@ -9,6 +9,7 @@
 namespace App\Service;
 
 
+use App\Exception\Token as TokenException;
 use App\Repository\UserRepository;
 
 /**
@@ -40,7 +41,7 @@ class UserToken
     public function __construct (UserRepository $userRepository, Token $token)
     {
         $this->userRepository = $userRepository;
-        $this->token = $token;
+        $this->token          = $token;
     }
 
     /**
@@ -51,16 +52,12 @@ class UserToken
     {
         $map = ['mobile' => $data['mobile']];
         $res = $this->userRepository->findOneBy($map);
-        if (empty($res)) throw new \App\Exception\Token(['message' => '账号错误']);
+        if (empty($res)) throw new TokenException(['message' => '账号错误']);
 
-        if ($res->getPassword() != $res->encodePassword($data['password'], $res->getRand())){
-            throw new \App\Exception\Token(['message' => '密码错误']);
+        if ($res->getPassword() != $res->encodePassword($data['password'], $res->getRand())) {
+            throw new TokenException(['message' => '密码错误']);
         }
 
-        $token = $this->token->generate([
-            'id' => $res->getId()
-        ]);
-
-        return $token;
+        return $this->token->generate(['id' => $res->getId()]);
     }
 }

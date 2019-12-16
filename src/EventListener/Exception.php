@@ -48,7 +48,8 @@ class Exception
      * ExceptionListener constructor.
      * @param $debug
      */
-    public function __construct ($debug) {
+    public function __construct ($debug)
+    {
         $this->debug = $debug;
     }
 
@@ -136,7 +137,7 @@ class Exception
      * @param ExceptionEvent $event
      * @return ExceptionEvent
      */
-    public function onKernelException(ExceptionEvent $event)
+    public function onKernelException (ExceptionEvent $event)
     {
         $this->setEvent($event);
         $exception = $event->getException();
@@ -164,9 +165,9 @@ class Exception
     private function createJsonResponse ()
     {
         return JsonResponse::create([
-            'message' => $this->getMessage(),
-            'errorCode' => $this->getErrorCode(),
-            'data' => $this->getData(),
+            'message'    => $this->getMessage(),
+            'errorCode'  => $this->getErrorCode(),
+            'data'       => $this->getData(),
             'requestUrl' => $this->getEvent()->getRequest()->getPathInfo()
         ], $this->getStatusCode());
     }

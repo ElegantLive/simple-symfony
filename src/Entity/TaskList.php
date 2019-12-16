@@ -41,46 +41,46 @@ class TaskList
      */
     private $tasks;
 
-    public function __construct()
+    public function __construct ()
     {
         $this->tasks = new ArrayCollection();
     }
 
-    public function getId(): ?int
+    public function getId (): ?int
     {
         return $this->id;
     }
 
-    public function getTitle(): ?string
+    public function getTitle (): ?string
     {
         return $this->title;
     }
 
-    public function setTitle(string $title): self
+    public function setTitle (string $title): self
     {
         $this->title = $title;
 
         return $this;
     }
 
-    public function getListId(): ?int
+    public function getListId (): ?int
     {
         return $this->list_id;
     }
 
-    public function setListId(int $list_id): self
+    public function setListId (int $list_id): self
     {
         $this->list_id = $list_id;
 
         return $this;
     }
 
-    public function getBackground(): ?string
+    public function getBackground (): ?string
     {
         return $this->background;
     }
 
-    public function setBackground(string $background): self
+    public function setBackground (string $background): self
     {
         $this->background = $background;
 
@@ -90,12 +90,12 @@ class TaskList
     /**
      * @return Collection|Task[]
      */
-    public function getTasks(): Collection
+    public function getTasks (): Collection
     {
         return $this->tasks;
     }
 
-    public function addTask(Task $task): self
+    public function addTask (Task $task): self
     {
         if (!$this->tasks->contains($task)) {
             $this->tasks[] = $task;
@@ -105,7 +105,7 @@ class TaskList
         return $this;
     }
 
-    public function removeTask(Task $task): self
+    public function removeTask (Task $task): self
     {
         if ($this->tasks->contains($task)) {
             $this->tasks->removeElement($task);

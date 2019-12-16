@@ -35,9 +35,17 @@ class Request
      */
     public function __construct (Serializer $serializer)
     {
-        $this->request = RequestBase::createFromGlobals();
+        $this->request    = RequestBase::createFromGlobals();
         $this->serializer = $serializer;
         self::initPayload();
+    }
+
+    /**
+     * @return RequestBase
+     */
+    public function getRequest ()
+    {
+        return $this->request;
     }
 
     /**
@@ -53,10 +61,10 @@ class Request
      */
     public function getData ()
     {
-        if (false !== strpos($this->request->getContentType(), 'json')) {
+        if (false !== strpos($this->getRequest()->getContentType(), 'json')) {
             return $this->payload;
         } else {
-            return $this->request->request->all();
+            return $this->getRequest()->request->all();
         }
     }
 
@@ -65,8 +73,8 @@ class Request
      */
     public function initPayload (): void
     {
-        if (false !== strpos($this->request->getContentType(), 'json')) {
-            $this->payload = $this->serializer->toArray($this->request->getContent(), 'json');
+        if (false !== strpos($this->getRequest()->getContentType(), 'json')) {
+            $this->payload = $this->serializer->toArray($this->getRequest()->getContent(), 'json');
         }
     }
 
@@ -77,6 +85,6 @@ class Request
      */
     public function __call ($name, $arguments)
     {
-        return call_user_func_array([$this->request, $name], $arguments);
+        return call_user_func_array([$this->getRequest(), $name], $arguments);
     }
 }
