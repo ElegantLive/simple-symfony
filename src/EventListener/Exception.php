@@ -27,18 +27,22 @@ class Exception
      * @var
      */
     private $event;
+
     /**
      * @var int
      */
     private $statusCode = 500;
+
     /**
      * @var int
      */
     private $errorCode = 999;
+
     /**
      * @var string
      */
     private $message = '服务器异常';
+
     /**
      * @var array
      */

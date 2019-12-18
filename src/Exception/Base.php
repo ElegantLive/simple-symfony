@@ -46,10 +46,7 @@ class Base extends HttpException
      * 允许携带的附加数据key
      * @var array
      */
-    public $accessKey = [
-        'data', 'errorCode', 'message'
-    ];
-
+    protected $accessKey = ['data', 'errorCode', 'message'];
 
     /**
      * Base constructor.
