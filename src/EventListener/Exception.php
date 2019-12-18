@@ -152,6 +152,7 @@ class Exception
             $this->setStatusCode($exception->getStatus());
 
             $event->setResponse($this->createJsonResponse());
+            return $event;
         }
 
         if ($this->debug) {
