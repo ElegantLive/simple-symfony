@@ -13,7 +13,7 @@ use Symfony\Component\HttpFoundation\Response;
 
 class Success extends Base
 {
-    protected $status = Response::HTTP_OK;
-    protected $message = 'OK';
+    protected $status    = Response::HTTP_OK;
+    protected $message   = 'OK';
     protected $errorCode = 0;
 }

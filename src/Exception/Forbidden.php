@@ -13,7 +13,7 @@ use Symfony\Component\HttpFoundation\Response;
 
 class Forbidden extends Base
 {
-    protected $status = Response::HTTP_FORBIDDEN;
-    protected $message = '你无权访问';
+    protected $status    = Response::HTTP_FORBIDDEN;
+    protected $message   = '你无权访问';
     protected $errorCode = 20001;
 }

@@ -21,7 +21,7 @@ class Exception
     /**
      * @var
      */
-    private $debug;
+    private $env;
 
     /**
      * @var
@@ -52,9 +52,9 @@ class Exception
      * ExceptionListener constructor.
      * @param $debug
      */
-    public function __construct ($debug)
+    public function __construct ($env)
     {
-        $this->debug = $debug;
+        $this->env = $env;
     }
 
     /**
@@ -155,9 +155,7 @@ class Exception
             return $event;
         }
 
-        if ($this->debug) {
-            return $event;
-        }
+        if ($this->env == 'dev') return $event;
 
         // do something else ...
         $event->setResponse($this->createJsonResponse());

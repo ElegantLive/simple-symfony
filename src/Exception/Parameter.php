@@ -13,7 +13,7 @@ use Symfony\Component\HttpFoundation\Response;
 
 class Parameter extends Base
 {
-    protected $status = Response::HTTP_BAD_REQUEST;
+    protected $status    = Response::HTTP_BAD_REQUEST;
     protected $errorCode = 10000;
-    protected $message = "invalid parameters";
+    protected $message   = "invalid parameters";
 }
