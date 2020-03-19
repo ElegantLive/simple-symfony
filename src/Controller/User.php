@@ -9,9 +9,11 @@
 namespace App\Controller;
 
 
+use App\Exception\Miss;
 use App\Exception\Success;
 use App\Repository\UserRepository;
 use App\Service\Request;
+use App\Service\Token;
 use App\Service\Serializer;
 use App\Validator\Register;
 use Doctrine\ORM\EntityManagerInterface;
@@ -29,11 +31,11 @@ class User extends AbstractController
      * @var UserRepository
      */
     private $userRepository;
+
     /**
      * @var EntityManagerInterface
      */
     private $entityManager;
-
 
     /**
      * User constructor.
@@ -58,11 +60,9 @@ class User extends AbstractController
 
         $user = new \App\Entity\User();
 
-        $user->setAvatar($data['avatar']);
-        $user->setEmail($data['email']);
-        $user->setMobile($data['mobile']);
-        $user->setSex($data['sex']);
-        $user->setName($data['name']);
+        $user->setTrust(['avatar', 'email', 'mobile', 'sex', 'name']);
+        $user->setTrustFields($data);
+
         $user->setRand();
         $user->setPassword($data['password']);
 
@@ -74,26 +74,36 @@ class User extends AbstractController
 
     /**
      * @Route("/info", methods={"GET"})
-     * @param \App\Service\Token      $token
-     * @param \App\Service\Serializer $serializer
+     * @param Token      $token
+     * @param Serializer $serializer
      */
-    public function info (\App\Service\Token $token, Serializer $serializer)
+    public function info (Token $token, Serializer $serializer)
     {
         $id = $token->getCurrentTokenKey('id');
 
         $user = $this->userRepository->findOneBy(['id' => $id]);
 
-        throw new Success(['data' => $serializer->normalize($user, 'json')]);
+        throw new Success(['data' => $serializer->normalize($user, 'json', $user->filterHidden())]);
     }
 
     /**
-     * @Route("/list", methods={"GET"})
-     * @param \App\Service\Serializer $serializer
+     * @Route("/", methods={"PATCH"})
+     * @param Token   $token
+     * @param Request $request
      */
-    public function list (Serializer $serializer)
+    public function update (Token $token, Request $request)
     {
-        $users = $this->userRepository->findAll();
+        $id = $token->getCurrentTokenKey('id');
 
-        throw new Success(['data' => $serializer->normalize($users, 'json')]);
+        $data = $request->getData();
+
+        $user = $this->userRepository->findOneBy(['id' => $id]);
+
+        if (!$user) throw new Miss();
+
+        $user->setTrustFields($data);
+        $this->entityManager->flush();
+
+        throw new Success();
     }
 }

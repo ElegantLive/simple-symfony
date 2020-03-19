@@ -31,12 +31,10 @@ class Request
 
     /**
      * Request constructor.
-     * @param Serializer $serializer
      */
-    public function __construct (Serializer $serializer)
+    public function __construct ()
     {
         $this->request    = RequestBase::createFromGlobals();
-        $this->serializer = $serializer;
         self::initPayload();
     }
 
@@ -74,7 +72,7 @@ class Request
     public function initPayload (): void
     {
         if (false !== strpos($this->getRequest()->getContentType(), 'json')) {
-            $this->payload = $this->serializer->toArray($this->getRequest()->getContent(), 'json');
+            $this->payload = json_decode($this->getRequest()->getContent(), true);
         }
     }
 

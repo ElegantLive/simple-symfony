@@ -8,15 +8,18 @@ use Doctrine\ORM\Mapping as ORM;
  * @ORM\Entity(repositoryClass="App\Repository\UserRepository")
  * @ORM\HasLifecycleCallbacks()
  */
-class User
+class User extends Base
 {
-    use Timestamps;
     use Password;
+    use Timestamps;
 
     public static $sexScope = [
         'MAN'   => '♂',
         'WOMEN' => '♀'
     ];
+
+    protected $trust = ['sex', 'name'];
+    protected $hidden = ['id', 'password', 'rand'];
 
     /**
      * @ORM\Id()
@@ -144,9 +147,11 @@ class User
         return $this;
     }
 
-    public function getSex (): ?string
+    public function getSex ($default = false): ?string
     {
-        return self::$sexScope[$this->sex];
+        $type = $default ? array_flip(self::$sexScope): self::$sexScope;
+
+        return $type[$this->sex];
     }
 
     public function setSex (string $sex): self

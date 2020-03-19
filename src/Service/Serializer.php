@@ -8,8 +8,8 @@
 
 namespace App\Service;
 
-
 use Symfony\Component\Serializer\Encoder\JsonDecode;
+use Symfony\Component\Serializer\Normalizer\ArrayDenormalizer;
 use Symfony\Component\Serializer\Normalizer\ObjectNormalizer;
 use Symfony\Component\Serializer\Serializer as BaseSerializer;
 
@@ -30,20 +30,10 @@ class Serializer
      */
     public function __construct ()
     {
-        $encoders    = [new JsonDecode()];
+        $encoders    = [new JsonDecode(), new ArrayDenormalizer()];
         $normalizers = [new ObjectNormalizer()];
 
         self::$serializer = new BaseSerializer($normalizers, $encoders);
-    }
-
-    /**
-     * @param $obj
-     * @param $format
-     * @return array
-     */
-    public function toArray ($obj, $format): array
-    {
-        return (array)self::$serializer->decode($obj, $format);
     }
 
     /**

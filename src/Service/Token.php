@@ -10,6 +10,7 @@ namespace App\Service;
 
 
 use App\Exception\Forbidden;
+use App\Exception\Token as TokenException;
 use Faker\Factory;
 use Symfony\Component\Cache\Adapter\RedisAdapter;
 
@@ -50,7 +51,7 @@ class Token
     private static function getCache ()
     {
         if ((Token::$cache instanceof RedisAdapter) == false) {
-            $client       = RedisAdapter::createConnection('redis://localhost:6379');
+            $client       = RedisAdapter::createConnection('redis://192.168.10.10:6379');
             Token::$cache = new RedisAdapter($client);
         }
         return Token::$cache;
@@ -100,12 +101,20 @@ class Token
     public function getCurrentTokenKey (string $key)
     {
         $item = static::getCache()->getItem(self::getTokenFromRequest());
-        if (empty($item->isHit())) throw new \App\Exception\Token(['message' => 'token已失效']);
+        if (empty($item->isHit())) throw new TokenException(['message' => 'token已失效']);
 
         $var = $item->get();
         if (isset($var[$key])) return $var[$key];
 
-        throw new \App\Exception\Token(['message' => '尝试获取的key不存在']);
+        throw new TokenException(['message' => '尝试获取的key不存在']);
+    }
+
+    /**
+     * 检查当前 token 是否失效
+     */
+    public function checkToken ()
+    {
+        self::authentication(self::SCOPE);
     }
 
     /**
@@ -124,7 +133,7 @@ class Token
     private function getTokenFromRequest ()
     {
         $token = $this->request->getRequest()->headers->get('token');
-        if (empty($token)) throw new \App\Exception\Token(['message' => '尝试获取的key不存在']);
+        if (empty($token)) throw new TokenException(['message' => '尝试获取的key不存在']);
 
         return $token;
     }
