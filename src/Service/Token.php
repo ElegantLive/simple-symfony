@@ -12,7 +12,7 @@ namespace App\Service;
 use App\Exception\Forbidden;
 use App\Exception\Token as TokenException;
 use Faker\Factory;
-use Symfony\Component\Cache\Adapter\RedisAdapter;
+use Symfony\Component\Cache\Adapter\AdapterInterface;
 
 /**
  * Class Token
@@ -27,36 +27,37 @@ class Token
     const SCOPE = 16;
 
     /**
-     * @var RedisAdapter;
-     */
-    private static $cache;
-
-    /**
      * @var Request
      */
     private $request;
 
     /**
-     * Token constructor.
-     * @param Request $request
+     * @var AdapterInterface
      */
-    public function __construct (Request $request)
+    private $cache;
+
+    /**
+     * Token constructor.
+     * @param Request          $request
+     * @param AdapterInterface $cache
+     */
+    public function __construct (Request $request, AdapterInterface $cache)
     {
         $this->request = $request;
+        $this->cache = $cache;
     }
 
     /**
-     * @return RedisAdapter
+     * @return AdapterInterface
      */
-    private static function getCache ()
+    private function getCache ()
     {
-        if ((Token::$cache instanceof RedisAdapter) == false) {
-            $client       = RedisAdapter::createConnection('redis://192.168.10.10:6379');
-            Token::$cache = new RedisAdapter($client);
-        }
-        return Token::$cache;
+        return $this->cache;
     }
 
+    /**
+     * @throws \Psr\Cache\InvalidArgumentException
+     */
     public function cleanToken ()
     {
         self::getCache()->deleteItem(self::getTokenFromRequest());
@@ -66,6 +67,7 @@ class Token
      * @param array $var
      * @param int   $scope
      * @return string
+     * @throws \Psr\Cache\InvalidArgumentException
      */
     public function generate (array $var, int $scope = self::SCOPE)
     {
@@ -97,6 +99,7 @@ class Token
     /**
      * @param string $key
      * @return mixed
+     * @throws \Psr\Cache\InvalidArgumentException
      */
     public function getCurrentTokenKey (string $key)
     {
@@ -119,6 +122,7 @@ class Token
 
     /**
      * @param int $scope
+     * @throws \Psr\Cache\InvalidArgumentException
      */
     public function authentication (int $scope)
     {
