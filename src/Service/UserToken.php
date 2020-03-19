@@ -47,6 +47,7 @@ class UserToken
     /**
      * @param array $data
      * @return string
+     * @throws \Psr\Cache\InvalidArgumentException
      */
     public function getToken (array $data)
     {
