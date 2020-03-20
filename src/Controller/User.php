@@ -17,7 +17,10 @@ use App\Service\Token;
 use App\Service\Serializer;
 use App\Validator\Register;
 use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Bridge\Twig\Mime\TemplatedEmail;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\Mailer\MailerInterface;
+use Symfony\Component\Mime\Email;
 use Symfony\Component\Routing\Annotation\Route;
 
 /**
@@ -38,20 +41,30 @@ class User extends AbstractController
     private $entityManager;
 
     /**
+     * @var MailerInterface
+     */
+    private $mailer;
+
+    /**
      * User constructor.
      * @param UserRepository         $userRepository
      * @param EntityManagerInterface $entityManager
+     * @param MailerInterface        $mailer
      */
-    public function __construct (UserRepository $userRepository, EntityManagerInterface $entityManager)
+    public function __construct (UserRepository $userRepository,
+                                 EntityManagerInterface $entityManager,
+                                 MailerInterface $mailer)
     {
         $this->userRepository = $userRepository;
         $this->entityManager  = $entityManager;
+        $this->mailer  = $mailer;
     }
 
     /**
      * @Route("/register", methods={"POST"}, name="userRegister")
      * @param Request $request
      * @throws \Exception
+     * @throws \Symfony\Component\Mailer\Exception\TransportExceptionInterface
      */
     public function register (Request $request)
     {
@@ -69,6 +82,18 @@ class User extends AbstractController
         $this->entityManager->persist($user);
         $this->entityManager->flush();
 
+        // send email
+        $email = (new TemplatedEmail())->from('qq52577517@163.com')
+            ->to($data['email'])
+            ->subject('thanks for your sign up')
+            ->htmlTemplate('emails/signup.html.twig')
+            ->context([
+                'expiration_date' => new \DateTime('+7 days'),
+                'username' => $data['name'],
+            ]);
+
+        $this->mailer->send($email);
+
         throw new Success();
     }
 
@@ -83,7 +108,6 @@ class User extends AbstractController
         $id = $token->getCurrentTokenKey('id');
 
         $user = $this->userRepository->findOneBy(['id' => $id]);
-        throw new \Exception('something was wrong');
 
         if (empty($user)) throw new Miss();
 
