@@ -6,7 +6,7 @@
  * Time: 09:18
  */
 
-namespace App\Entity;
+namespace App\Entity\Traits;
 
 
 trait Trust

@@ -2,16 +2,22 @@
 
 namespace App\Entity;
 
+use App\Entity\Traits\Password;
+use App\Entity\Traits\Timestamps;
 use Doctrine\ORM\Mapping as ORM;
+use Gedmo\SoftDeleteable\Traits\SoftDeleteableEntity;
+use Gedmo\Mapping\Annotation as Gedmo;
 
 /**
  * @ORM\Entity(repositoryClass="App\Repository\UserRepository")
+ * @Gedmo\SoftDeleteable(fieldName="deletedAt", timeAware=false, hardDelete=false)
  * @ORM\HasLifecycleCallbacks()
  */
 class User extends Base
 {
     use Password;
     use Timestamps;
+    use SoftDeleteableEntity;
 
     public static $sexScope = [
         'MAN'   => '♂',

@@ -9,6 +9,9 @@
 namespace App\Entity;
 
 
+use App\Entity\Traits\Hidden;
+use App\Entity\Traits\Trust;
+
 class Base
 {
     use Hidden;

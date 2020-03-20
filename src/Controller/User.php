@@ -49,7 +49,7 @@ class User extends AbstractController
     }
 
     /**
-     * @Route("/register", methods={"POST"})
+     * @Route("/register", methods={"POST"}, name="userRegister")
      * @param Request $request
      * @throws \Exception
      */
@@ -73,23 +73,28 @@ class User extends AbstractController
     }
 
     /**
-     * @Route("/info", methods={"GET"})
+     * @Route("/info", methods={"GET"}, name="userInfo")
      * @param Token      $token
      * @param Serializer $serializer
+     * @throws \Psr\Cache\InvalidArgumentException
      */
     public function info (Token $token, Serializer $serializer)
     {
         $id = $token->getCurrentTokenKey('id');
 
         $user = $this->userRepository->findOneBy(['id' => $id]);
+        throw new \Exception('something was wrong');
+
+        if (empty($user)) throw new Miss();
 
         throw new Success(['data' => $serializer->normalize($user, 'json', $user->filterHidden())]);
     }
 
     /**
-     * @Route("/", methods={"PATCH"})
+     * @Route("/", methods={"PATCH"}, name="updateUser")
      * @param Token   $token
      * @param Request $request
+     * @throws \Psr\Cache\InvalidArgumentException
      */
     public function update (Token $token, Request $request)
     {
@@ -102,6 +107,25 @@ class User extends AbstractController
         if (!$user) throw new Miss();
 
         $user->setTrustFields($data);
+        $this->entityManager->flush();
+
+        throw new Success();
+    }
+
+    /**
+     * @Route("/", methods={"DELETE"}, name="deleteUser")
+     * @param Token $token
+     * @throws \Psr\Cache\InvalidArgumentException
+     */
+    public function disable (Token $token)
+    {
+        $id = $token->getCurrentTokenKey('id');
+
+        $user = $this->userRepository->findOneBy(['id' => $id]);
+
+        if (!$user) throw new Miss();
+
+        $this->entityManager->remove($user);
         $this->entityManager->flush();
 
         throw new Success();

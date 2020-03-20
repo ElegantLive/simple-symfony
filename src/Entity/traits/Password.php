@@ -5,7 +5,7 @@
  * Date: 2019/9/23
  * Time: 14:41
  */
-namespace App\Entity;
+namespace App\Entity\Traits;
 
 trait Password {
     public function encodeSecret (string $secret, string $rand = '')

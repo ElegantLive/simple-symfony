@@ -6,7 +6,7 @@
  * Time: 10:50
  */
 
-namespace App\Entity;
+namespace App\Entity\Traits;
 
 use Symfony\Component\Serializer\Normalizer\AbstractNormalizer;
 
