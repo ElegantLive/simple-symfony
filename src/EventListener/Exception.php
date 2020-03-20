@@ -9,6 +9,7 @@
 namespace App\EventListener;
 
 use App\Exception\Base;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpKernel\Event\ExceptionEvent;
 
@@ -49,12 +50,19 @@ class Exception
     private $data = [];
 
     /**
-     * ExceptionListener constructor.
-     * @param $debug
+     * @var LoggerInterface
      */
-    public function __construct ($env)
+    private $logger;
+
+    /**
+     * ExceptionListener constructor.
+     * @param                 $env
+     * @param LoggerInterface $logger
+     */
+    public function __construct ($env, LoggerInterface $logger)
     {
         $this->env = $env;
+        $this->logger = $logger;
     }
 
     /**
@@ -156,6 +164,13 @@ class Exception
         }
 
         if ($this->env == 'dev') return $event;
+
+        // logger error message
+        $this->logger->error($exception->getMessage(), [
+            'file' => $exception->getFile(),
+            'line' => $exception->getLine(),
+            'trace' => $exception->getTrace()
+        ]);
 
         // do something else ...
         $event->setResponse($this->createJsonResponse());
