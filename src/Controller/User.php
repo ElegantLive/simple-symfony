@@ -20,7 +20,6 @@ use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bridge\Twig\Mime\TemplatedEmail;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Mailer\MailerInterface;
-use Symfony\Component\Mime\Email;
 use Symfony\Component\Routing\Annotation\Route;
 
 /**
@@ -57,7 +56,7 @@ class User extends AbstractController
     {
         $this->userRepository = $userRepository;
         $this->entityManager  = $entityManager;
-        $this->mailer  = $mailer;
+        $this->mailer         = $mailer;
     }
 
     /**
@@ -89,7 +88,7 @@ class User extends AbstractController
             ->htmlTemplate('emails/signup.html.twig')
             ->context([
                 'expiration_date' => new \DateTime('+7 days'),
-                'username' => $data['name'],
+                'username'        => $data['name'],
             ]);
 
         $this->mailer->send($email);
