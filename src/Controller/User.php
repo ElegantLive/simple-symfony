@@ -11,6 +11,7 @@ namespace App\Controller;
 
 use App\Exception\Miss;
 use App\Exception\Success;
+use App\Exception\Used;
 use App\Message\SignUpNotification;
 use App\Repository\UserRepository;
 use App\Service\Request;
@@ -19,7 +20,9 @@ use App\Service\Serializer;
 use App\Validator\Register;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\Messenger\Envelope;
 use Symfony\Component\Messenger\MessageBusInterface;
+use Symfony\Component\Messenger\Stamp\DelayStamp;
 use Symfony\Component\Routing\Annotation\Route;
 
 /**
@@ -71,6 +74,10 @@ class User extends AbstractController
 
         $user = new \App\Entity\User();
 
+        if ($this->userRepository->findOneBy(['email' => $data['email']])) throw new Used(['message' => '邮箱已被占用']);
+        if ($this->userRepository->findOneBy(['mobile' => $data['mobile']])) throw new Used(['message' => '号码已被占用']);
+        if ($this->userRepository->findOneBy(['name' => $data['name']])) throw new Used(['message' => '昵称已被占用']);
+
         $user->setTrust(['avatar', 'email', 'mobile', 'sex', 'name']);
         $user->setTrustFields($data);
 
@@ -80,6 +87,9 @@ class User extends AbstractController
         $this->entityManager->persist($user);
         $this->entityManager->flush();
 
+//        $this->bus->dispatch(new Envelope(new SignUpNotification($user->getId())), [
+//            new DelayStamp(1000 * 30)
+//        ]);
         $this->bus->dispatch((new SignUpNotification($user->getId())));
 
         throw new Success();

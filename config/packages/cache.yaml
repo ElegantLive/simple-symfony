@@ -24,7 +24,7 @@ framework:
                 provider: app.my_cache_chain_adapter
             cache.my_redis:
                 adapter: cache.adapter.redis
-                provider: 'redis://192.168.10.10:6379'
+                provider: '%env(REDIS_DSN)%'
 #            cache.apcu:
 #                adapter: cache.adapter.apcu
             cache.array:
