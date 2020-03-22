@@ -11,15 +11,15 @@ namespace App\Controller;
 
 use App\Exception\Miss;
 use App\Exception\Success;
+use App\Message\SignUpNotification;
 use App\Repository\UserRepository;
 use App\Service\Request;
 use App\Service\Token;
 use App\Service\Serializer;
 use App\Validator\Register;
 use Doctrine\ORM\EntityManagerInterface;
-use Symfony\Bridge\Twig\Mime\TemplatedEmail;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
-use Symfony\Component\Mailer\MailerInterface;
+use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Routing\Annotation\Route;
 
 /**
@@ -40,30 +40,29 @@ class User extends AbstractController
     private $entityManager;
 
     /**
-     * @var MailerInterface
+     * @var MessageBusInterface
      */
-    private $mailer;
+    private $bus;
 
     /**
      * User constructor.
      * @param UserRepository         $userRepository
      * @param EntityManagerInterface $entityManager
-     * @param MailerInterface        $mailer
+     * @param MessageBusInterface    $bus
      */
     public function __construct (UserRepository $userRepository,
                                  EntityManagerInterface $entityManager,
-                                 MailerInterface $mailer)
+                                 MessageBusInterface $bus)
     {
         $this->userRepository = $userRepository;
         $this->entityManager  = $entityManager;
-        $this->mailer         = $mailer;
+        $this->bus            = $bus;
     }
 
     /**
      * @Route("/register", methods={"POST"}, name="userRegister")
      * @param Request $request
      * @throws \Exception
-     * @throws \Symfony\Component\Mailer\Exception\TransportExceptionInterface
      */
     public function register (Request $request)
     {
@@ -81,17 +80,7 @@ class User extends AbstractController
         $this->entityManager->persist($user);
         $this->entityManager->flush();
 
-        // send email
-        $email = (new TemplatedEmail())->from('qq52577517@163.com')
-            ->to($data['email'])
-            ->subject('thanks for your sign up')
-            ->htmlTemplate('emails/signup.html.twig')
-            ->context([
-                'expiration_date' => new \DateTime('+7 days'),
-                'username'        => $data['name'],
-            ]);
-
-        $this->mailer->send($email);
+        $this->bus->dispatch((new SignUpNotification($user->getId())));
 
         throw new Success();
     }
