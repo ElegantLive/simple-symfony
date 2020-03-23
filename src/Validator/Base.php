@@ -13,6 +13,7 @@ use App\Exception\Parameter;
 use Symfony\Component\Validator\Constraints\Collection;
 use Symfony\Component\Validator\Validation;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
+use Symfony\Component\Validator\Constraints as Assert;
 
 /**
  * Class Base
@@ -24,6 +25,11 @@ abstract class Base
      * @var Collection
      */
     protected $collection;
+
+    /**
+     * @var array
+     */
+    protected $fields = [];
 
     /**
      * @var ValidatorInterface
@@ -51,16 +57,24 @@ abstract class Base
         return $this->collection;
     }
 
-    abstract protected function setCollection ();
+    protected function setCollection ()
+    {
+        $this->collection = new Assert\Collection([
+            'fields'               => $this->fields,
+            'missingFieldsMessage' => '缺少定义字段 {{ field }}',
+            'extraFieldsMessage'   => '请移除额外的字段 {{ field }}'
+        ]);
+    }
+
+    abstract protected function setFields ();
 
     /**
      * Base constructor.
      */
     public function __construct ()
     {
-        if (empty(self::getValidator() instanceof ValidatorInterface)) {
-            self::setValidator();
-        }
+        if (empty(self::getValidator() instanceof ValidatorInterface)) self::setValidator();
+        static::setFields();
         static::setCollection();
     }
 

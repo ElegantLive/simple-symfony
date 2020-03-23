@@ -2,6 +2,12 @@
 # See the official DoctrineExtensions documentation for more details: https://github.com/Atlantic18/DoctrineExtensions/tree/master/doc/
 stof_doctrine_extensions:
     default_locale: zh_CN
+    uploadable:
+        default_file_path: "%kernel.root_dir%/../public/uploads"
+        mime_type_guesser_class: Stof\DoctrineExtensionsBundle\Uploadable\MimeTypeGuesserAdapter
+        default_file_info_class: Stof\DoctrineExtensionsBundle\Uploadable\UploadedFileInfo
     orm:
         default:
             softdeleteable: true
+            uploadable: true
+            timestampable: true

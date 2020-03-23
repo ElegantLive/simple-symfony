@@ -15,15 +15,15 @@ use Symfony\Component\Validator\Constraints as Assert;
 
 class UserToken extends Base
 {
-    protected function setCollection ()
+    protected function setFields ()
     {
-        $this->collection = new Assert\Collection([
-            'mobile' => new Assert\Required([
+        $this->fields = [
+            'mobile'   => new Assert\Required([
                 new Mobile()
             ]),
             'password' => new Assert\Required([
                 new Password()
             ])
-        ]);
+        ];
     }
 }

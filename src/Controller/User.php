@@ -9,20 +9,21 @@
 namespace App\Controller;
 
 
+use App\Entity\UserAvatarHistory;
+use App\Exception\Gone;
 use App\Exception\Miss;
 use App\Exception\Success;
 use App\Exception\Used;
-use App\Message\SignUpNotification;
 use App\Repository\UserRepository;
 use App\Service\Request;
 use App\Service\Token;
 use App\Service\Serializer;
 use App\Validator\Register;
+use App\Validator\SetAvatar;
 use Doctrine\ORM\EntityManagerInterface;
+use Stof\DoctrineExtensionsBundle\Uploadable\UploadableManager;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
-use Symfony\Component\Messenger\Envelope;
 use Symfony\Component\Messenger\MessageBusInterface;
-use Symfony\Component\Messenger\Stamp\DelayStamp;
 use Symfony\Component\Routing\Annotation\Route;
 
 /**
@@ -48,18 +49,26 @@ class User extends AbstractController
     private $bus;
 
     /**
+     * @var Serializer
+     */
+    private $serializer;
+
+    /**
      * User constructor.
      * @param UserRepository         $userRepository
      * @param EntityManagerInterface $entityManager
      * @param MessageBusInterface    $bus
+     * @param Serializer             $serializer
      */
     public function __construct (UserRepository $userRepository,
                                  EntityManagerInterface $entityManager,
-                                 MessageBusInterface $bus)
+                                 MessageBusInterface $bus,
+                                 Serializer $serializer)
     {
         $this->userRepository = $userRepository;
         $this->entityManager  = $entityManager;
         $this->bus            = $bus;
+        $this->serializer     = $serializer;
     }
 
     /**
@@ -78,7 +87,7 @@ class User extends AbstractController
         if ($this->userRepository->findOneBy(['mobile' => $data['mobile']])) throw new Used(['message' => '号码已被占用']);
         if ($this->userRepository->findOneBy(['name' => $data['name']])) throw new Used(['message' => '昵称已被占用']);
 
-        $user->setTrust(['avatar', 'email', 'mobile', 'sex', 'name']);
+        $user->setTrust(['email', 'mobile', 'sex', 'name']);
         $user->setTrustFields($data);
 
         $user->setRand();
@@ -87,29 +96,66 @@ class User extends AbstractController
         $this->entityManager->persist($user);
         $this->entityManager->flush();
 
-//        $this->bus->dispatch(new Envelope(new SignUpNotification($user->getId())), [
-//            new DelayStamp(1000 * 30)
-//        ]);
-        $this->bus->dispatch((new SignUpNotification($user->getId())));
+//        $this->bus->dispatch((new SignUpNotification($user->getId())));
 
         throw new Success();
     }
 
     /**
      * @Route("/info", methods={"GET"}, name="userInfo")
-     * @param Token      $token
-     * @param Serializer $serializer
+     * @param Token $token
      * @throws \Psr\Cache\InvalidArgumentException
      */
-    public function info (Token $token, Serializer $serializer)
+    public function info (Token $token)
     {
         $id = $token->getCurrentTokenKey('id');
 
         $user = $this->userRepository->findOneBy(['id' => $id]);
 
         if (empty($user)) throw new Miss();
+        if ($user->isDeleted()) throw new Gone();
 
-        throw new Success(['data' => $serializer->normalize($user, 'json', $user->filterHidden())]);
+        throw new Success(['data' => $this->serializer->normalize($user, 'json', $user->filterHidden())]);
+    }
+
+    /**
+     * @Route("/avatar/upload", methods={"POST"}, name="setAvatarByUpload", )
+     * @param Token             $token
+     * @param Request           $request
+     * @param UploadableManager $uploadableManager
+     * @throws \Psr\Cache\InvalidArgumentException
+     * @throws \Exception
+     */
+    public function setAvatarByUpload (Token $token, Request $request, UploadableManager $uploadableManager)
+    {
+        $data = $request->request->files->all();
+
+        (new SetAvatar())->check($data);
+
+        $id = $token->getCurrentTokenKey('id');
+
+        $user = $this->userRepository->findOneBy(['id' => $id]);
+
+        if (empty($user)) throw new Miss();
+
+        $avatarEntity = new UserAvatarHistory();
+        $this->entityManager->persist($avatarEntity);
+
+        $uploadableManager->markEntityToUpload($avatarEntity, $data['avatar']);
+        $avatarEntity->setCurrent(true);
+        $avatarEntity->setUid($user);
+
+        $this->entityManager->persist($avatarEntity);
+        foreach ($user->getUserAvatarHistories() as $index => $item) {
+            if (!$item->getCurrent()) continue;
+            if ($item->getId() !== $avatarEntity->getId()) {
+                $item->setCurrent(false);
+            }
+        }
+
+        $this->entityManager->flush();
+
+        throw new Success();
     }
 
     /**
@@ -146,6 +192,7 @@ class User extends AbstractController
         $user = $this->userRepository->findOneBy(['id' => $id]);
 
         if (!$user) throw new Miss();
+        if ($user->isDeleted()) throw new Gone();
 
         $this->entityManager->remove($user);
         $this->entityManager->flush();

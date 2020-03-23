@@ -9,6 +9,7 @@
 namespace App\Service;
 
 
+use App\Exception\Gone;
 use App\Exception\Token as TokenException;
 use App\Repository\UserRepository;
 
@@ -52,13 +53,14 @@ class UserToken
     public function getToken (array $data)
     {
         $map = ['mobile' => $data['mobile']];
-        $res = $this->userRepository->findOneBy($map);
-        if (empty($res)) throw new TokenException(['message' => '账号错误']);
+        $user = $this->userRepository->findOneBy($map);
+        if (empty($user)) throw new TokenException(['message' => '账号错误']);
+        if ($user->isDeleted()) throw new Gone();
 
-        if ($res->getPassword() != $res->encodePassword($data['password'], $res->getRand())) {
+        if ($user->getPassword() != $user->encodePassword($data['password'], $user->getRand())) {
             throw new TokenException(['message' => '密码错误']);
         }
 
-        return $this->token->generate(['id' => $res->getId()]);
+        return $this->token->generate(['id' => $user->getId()]);
     }
 }

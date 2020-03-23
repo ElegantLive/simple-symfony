@@ -4,6 +4,8 @@ namespace App\Entity;
 
 use App\Entity\Traits\Password;
 use App\Entity\Traits\Timestamps;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 use Gedmo\SoftDeleteable\Traits\SoftDeleteableEntity;
 use Gedmo\Mapping\Annotation as Gedmo;
@@ -25,7 +27,7 @@ class User extends Base
     ];
 
     protected $trust = ['sex', 'name'];
-    protected $hidden = ['id', 'password', 'rand'];
+    protected $hidden = ['id', 'password', 'rand', 'deletedAt', 'deleted'];
 
     /**
      * @ORM\Id()
@@ -68,6 +70,16 @@ class User extends Base
      * @ORM\Column(type="string", columnDefinition="enum('MAN', 'WOMEN')")
      */
     private $sex = 'MAN';
+
+    /**
+     * @ORM\OneToMany(targetEntity="App\Entity\UserAvatarHistory", mappedBy="uid")
+     */
+    private $userAvatarHistories;
+
+    public function __construct()
+    {
+        $this->userAvatarHistories = new ArrayCollection();
+    }
 
     public function getId (): ?int
     {
@@ -172,5 +184,36 @@ class User extends Base
         $password = empty($password) ? self::getPassword() : $password;
         $rand     = empty($rand) ? self::getRand() : $rand;
         return $this->encodeSecret($password, $rand);
+    }
+
+    /**
+     * @return Collection|UserAvatarHistory[]
+     */
+    public function getUserAvatarHistories(): Collection
+    {
+        return $this->userAvatarHistories;
+    }
+
+    public function addUserAvatarHistory(UserAvatarHistory $userAvatarHistory): self
+    {
+        if (!$this->userAvatarHistories->contains($userAvatarHistory)) {
+            $this->userAvatarHistories[] = $userAvatarHistory;
+            $userAvatarHistory->setUid($this);
+        }
+
+        return $this;
+    }
+
+    public function removeUserAvatarHistory(UserAvatarHistory $userAvatarHistory): self
+    {
+        if ($this->userAvatarHistories->contains($userAvatarHistory)) {
+            $this->userAvatarHistories->removeElement($userAvatarHistory);
+            // set the owning side to null (unless already changed)
+            if ($userAvatarHistory->getUid() === $this) {
+                $userAvatarHistory->setUid(null);
+            }
+        }
+
+        return $this;
     }
 }

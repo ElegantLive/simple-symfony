@@ -14,10 +14,10 @@ use Symfony\Component\Validator\Constraints as Assert;
 
 class Example extends Base
 {
-    protected function setCollection ()
+    protected function setFields ()
     {
-        $this->collection = new Assert\Collection([
+        $this->fields = [
             'mobile' => new Mobile()
-        ]);
+        ];
     }
 }
