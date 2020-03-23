@@ -9,6 +9,7 @@
 namespace App\Service;
 
 use Symfony\Component\Serializer\Encoder\JsonDecode;
+use Symfony\Component\Serializer\Encoder\JsonEncode;
 use Symfony\Component\Serializer\Normalizer\ArrayDenormalizer;
 use Symfony\Component\Serializer\Normalizer\ObjectNormalizer;
 use Symfony\Component\Serializer\Serializer as BaseSerializer;
@@ -23,27 +24,17 @@ class Serializer
     /**
      * @var BaseSerializer
      */
-    private static $serializer;
+    private $serializer;
 
     /**
      * Serializer constructor.
      */
     public function __construct ()
     {
-        $encoders    = [new JsonDecode(), new ArrayDenormalizer()];
+        $encoders    = [new JsonDecode(), new ArrayDenormalizer(), new JsonEncode()];
         $normalizers = [new ObjectNormalizer()];
 
-        self::$serializer = new BaseSerializer($normalizers, $encoders);
-    }
-
-    /**
-     * @param $name
-     * @param $arguments
-     * @return mixed
-     */
-    public static function __callStatic ($name, $arguments)
-    {
-        return call_user_func_array([self::$serializer, $name], $arguments);
+        $this->serializer = new BaseSerializer($normalizers, $encoders);
     }
 
     /**
@@ -53,6 +44,6 @@ class Serializer
      */
     public function __call ($name, $arguments)
     {
-        return call_user_func_array([self::$serializer, $name], $arguments);
+        return call_user_func_array([$this->serializer, $name], $arguments);
     }
 }

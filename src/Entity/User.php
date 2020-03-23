@@ -27,7 +27,7 @@ class User extends Base
     ];
 
     protected $trust = ['sex', 'name'];
-    protected $hidden = ['id', 'password', 'rand', 'deletedAt', 'deleted'];
+    protected $hidden = ['id', 'password', 'rand', 'deletedAt', 'deleted', 'userAvatarHistories'];
 
     /**
      * @ORM\Id()
@@ -72,7 +72,7 @@ class User extends Base
     private $sex = 'MAN';
 
     /**
-     * @ORM\OneToMany(targetEntity="App\Entity\UserAvatarHistory", mappedBy="uid")
+     * @ORM\OneToMany(targetEntity="App\Entity\UserAvatarHistory", mappedBy="user")
      */
     private $userAvatarHistories;
 
@@ -198,7 +198,7 @@ class User extends Base
     {
         if (!$this->userAvatarHistories->contains($userAvatarHistory)) {
             $this->userAvatarHistories[] = $userAvatarHistory;
-            $userAvatarHistory->setUid($this);
+            $userAvatarHistory->setUser($this);
         }
 
         return $this;
@@ -209,8 +209,8 @@ class User extends Base
         if ($this->userAvatarHistories->contains($userAvatarHistory)) {
             $this->userAvatarHistories->removeElement($userAvatarHistory);
             // set the owning side to null (unless already changed)
-            if ($userAvatarHistory->getUid() === $this) {
-                $userAvatarHistory->setUid(null);
+            if ($userAvatarHistory->getUser() === $this) {
+                $userAvatarHistory->setUser(null);
             }
         }
 

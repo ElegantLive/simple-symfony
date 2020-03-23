@@ -11,9 +11,11 @@ use Gedmo\SoftDeleteable\Traits\SoftDeleteableEntity;
  * @Gedmo\Uploadable(filenameGenerator="SHA1", allowOverwrite=true, appendNumber=true)
  * @Gedmo\SoftDeleteable(fieldName="deletedAt", timeAware=false, hardDelete=false)
  */
-class UserAvatarHistory
+class UserAvatarHistory extends Base
 {
     use SoftDeleteableEntity;
+
+    protected $hidden = ['user_id', 'user', 'deleted', 'deletedAt'];
 
     /**
      * @ORM\Id()
@@ -52,12 +54,6 @@ class UserAvatarHistory
     private $publicPath;
 
     /**
-     * @ORM\ManyToOne(targetEntity="App\Entity\User", inversedBy="userAvatarHistories")
-     * @ORM\JoinColumn(nullable=false)
-     */
-    private $uid;
-
-    /**
      * @ORM\Column(type="boolean", nullable=true)
      */
     private $current = false;
@@ -73,6 +69,11 @@ class UserAvatarHistory
      * @ORM\Column(type="integer")
      */
     private $updatedAt;
+
+    /**
+     * @ORM\ManyToOne(targetEntity="App\Entity\User", inversedBy="userAvatarHistories")
+     */
+    private $user;
 
     public function getId (): ?int
     {
@@ -132,18 +133,6 @@ class UserAvatarHistory
         return '/uploads/' . $this->name;
     }
 
-    public function getUid (): ?User
-    {
-        return $this->uid;
-    }
-
-    public function setUid (?User $uid): self
-    {
-        $this->uid = $uid;
-
-        return $this;
-    }
-
     public function getCurrent (): ?bool
     {
         return $this->current;
@@ -196,5 +185,17 @@ class UserAvatarHistory
     public function getUpdatedAt ()
     {
         return $this->updatedAt;
+    }
+
+    public function getUser(): ?User
+    {
+        return $this->user;
+    }
+
+    public function setUser(?User $user): self
+    {
+        $this->user = $user;
+
+        return $this;
     }
 }

@@ -119,46 +119,6 @@ class User extends AbstractController
     }
 
     /**
-     * @Route("/avatar/upload", methods={"POST"}, name="setAvatarByUpload", )
-     * @param Token             $token
-     * @param Request           $request
-     * @param UploadableManager $uploadableManager
-     * @throws \Psr\Cache\InvalidArgumentException
-     * @throws \Exception
-     */
-    public function setAvatarByUpload (Token $token, Request $request, UploadableManager $uploadableManager)
-    {
-        $data = $request->request->files->all();
-
-        (new SetAvatar())->check($data);
-
-        $id = $token->getCurrentTokenKey('id');
-
-        $user = $this->userRepository->findOneBy(['id' => $id]);
-
-        if (empty($user)) throw new Miss();
-
-        $avatarEntity = new UserAvatarHistory();
-        $this->entityManager->persist($avatarEntity);
-
-        $uploadableManager->markEntityToUpload($avatarEntity, $data['avatar']);
-        $avatarEntity->setCurrent(true);
-        $avatarEntity->setUid($user);
-
-        $this->entityManager->persist($avatarEntity);
-        foreach ($user->getUserAvatarHistories() as $index => $item) {
-            if (!$item->getCurrent()) continue;
-            if ($item->getId() !== $avatarEntity->getId()) {
-                $item->setCurrent(false);
-            }
-        }
-
-        $this->entityManager->flush();
-
-        throw new Success();
-    }
-
-    /**
      * @Route("/", methods={"PATCH"}, name="updateUser")
      * @param Token   $token
      * @param Request $request
@@ -198,5 +158,118 @@ class User extends AbstractController
         $this->entityManager->flush();
 
         throw new Success();
+    }
+
+    /**
+     * @Route("/avatar/upload", methods={"POST"}, name="setAvatarByUpload", )
+     * @param Token             $token
+     * @param Request           $request
+     * @param UploadableManager $uploadableManager
+     * @throws \Psr\Cache\InvalidArgumentException
+     * @throws \Exception
+     */
+    public function setAvatarByUpload (Token $token, Request $request, UploadableManager $uploadableManager)
+    {
+        $data = $request->request->files->all();
+
+        (new SetAvatar())->check($data);
+
+        $id = $token->getCurrentTokenKey('id');
+
+        $user = $this->userRepository->findOneBy(['id' => $id]);
+
+        if (empty($user)) throw new Miss();
+
+        $avatarEntity = new UserAvatarHistory();
+
+        $this->entityManager->beginTransaction();
+        try {
+            $uploadableManager->markEntityToUpload($avatarEntity, $data['avatar']);
+            $avatarEntity->setCurrent(true);
+            $avatarEntity->setUser($user);
+
+            $this->entityManager->persist($avatarEntity);
+            foreach ($user->getUserAvatarHistories() as $index => $item) {
+                if (!$item->getCurrent()) continue;
+                if ($item->getId() !== $avatarEntity->getId()) {
+                    $item->setCurrent(false);
+                    continue;
+                }
+            }
+            $this->entityManager->flush();
+
+            $user->setAvatar($avatarEntity->getPublicPath());
+            $this->entityManager->flush();
+
+            $this->entityManager->commit();
+        } catch (\Exception $exception) {
+            $this->entityManager->rollback();
+            throw $exception;
+        }
+        throw new Success();
+    }
+
+    /**
+     * @Route("/avatar/history", methods={"PUT"}, name="setAvatarByHistory", )
+     * @param Token             $token
+     * @param Request           $request
+     * @throws \Psr\Cache\InvalidArgumentException
+     * @throws \Exception
+     */
+    public function setAvatarByHistory (Token $token, Request $request)
+    {
+        $id = $token->getCurrentTokenKey('id');
+
+        $user = $this->userRepository->findOneBy(['id' => $id]);
+
+        if (empty($user)) throw new Miss();
+        if ($user->isDeleted()) throw new Gone();
+
+        $data = $request->getData();
+
+        $this->entityManager->beginTransaction();
+        try {
+            $avatar = $user->getAvatar();
+            foreach ($user->getUserAvatarHistories() as $index => $item) {
+                if ($item->getId() === $data['id']) {
+                    $item->setCurrent(true);
+                    $avatar = $item->getPublicPath();
+                    continue;
+                }
+                if (!$item->getCurrent()) continue;
+                $item->setCurrent(false);
+            }
+            $user->setAvatar($avatar);
+            $this->entityManager->flush();
+
+            $this->entityManager->commit();
+        } catch (\Exception $exception) {
+            $this->entityManager->rollback();
+            throw $exception;
+        }
+
+        throw new Success();
+    }
+
+    /**
+     * @Route("/avatar/history", methods={"GET"}, name="getAvatarHistory")
+     * @param Token $token
+     * @throws \Psr\Cache\InvalidArgumentException
+     */
+    public function avatarHistory (Token $token)
+    {
+        $id = $token->getCurrentTokenKey('id');
+
+        $user = $this->userRepository->find($id);
+
+        $avatar = $user->getUserAvatarHistories();
+
+        $data = [];
+        foreach ($avatar as $item) {
+            if ($item->isDeleted()) continue;
+            array_push($data, $this->serializer->normalize($item, 'json', $item->filterHidden()));
+        }
+
+        throw new Success(['data' => $data]);
     }
 }
