@@ -26,12 +26,12 @@ services:
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones
 
-    # design exception handler
-    App\EventListener\Exception:
-        tags:
-            - { name: kernel.event_listener, event: kernel.exception }
-        arguments:
-            $env: '%env(APP_ENV)%'
+    # design exception handler choose one of these 'event_listener' or 'event_subscriber'
+#    App\EventListener\Exception:
+#        tags:
+#            - { name: kernel.event_listener, event: kernel.exception }
+#        arguments:
+#            $env: '%env(APP_ENV)%'
 
     App\EventSubscriber\Exception:
         tags:
