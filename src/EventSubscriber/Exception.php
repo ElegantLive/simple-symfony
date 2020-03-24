@@ -3,10 +3,13 @@
 namespace App\EventSubscriber;
 
 use App\Exception\Base;
+use App\Message\ExceptionNotification;
 use Psr\Log\LoggerInterface;
+use Symfony\Bundle\TwigBundle\Controller\ExceptionController;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpKernel\Event\ExceptionEvent;
+use Symfony\Component\Messenger\MessageBusInterface;
 
 /**
  * Class Exception
@@ -15,9 +18,14 @@ use Symfony\Component\HttpKernel\Event\ExceptionEvent;
 class Exception implements EventSubscriberInterface
 {
     /**
-     * @var
+     * @var string
      */
     private $env;
+
+    /**
+     * @var
+     */
+    private $event;
 
     /**
      * @var LoggerInterface
@@ -44,16 +52,39 @@ class Exception implements EventSubscriberInterface
      * @var array
      */
     private $data = [];
+    /**
+     * @var ExceptionController
+     */
+    private $controller;
+
+    /**
+     * @var MessageBusInterface
+     */
+    private $bus;
+    /**
+     * @var string
+     */
+    private $from;
+    /**
+     * @var string
+     */
+    private $dev;
 
     /**
      * ExceptionListener constructor.
-     * @param                 $env
-     * @param LoggerInterface $logger
+     * @param                     $env
+     * @param                     $from
+     * @param                     $dev
+     * @param LoggerInterface     $logger
+     * @param MessageBusInterface $bus
      */
-    public function __construct ($env, LoggerInterface $logger)
+    public function __construct ($env, $from, $dev, LoggerInterface $logger, MessageBusInterface $bus)
     {
         $this->env    = $env;
         $this->logger = $logger;
+        $this->bus    = $bus;
+        $this->from   = $from;
+        $this->dev    = $dev;
     }
 
     /**
@@ -156,15 +187,22 @@ class Exception implements EventSubscriberInterface
         }
         if ($this->env === 'dev') return $event;
 
+        $event->setResponse($this->createJsonResponse());
+
         // logger error message
         $this->logger->error($exception->getMessage(), [
             'file'  => $exception->getFile(),
             'line'  => $exception->getLine(),
             'trace' => $exception->getTrace()
         ]);
+        $this->bus->dispatch(new ExceptionNotification($event->getRequest(), $exception, [
+            'sender'   => $this->from,
+            'receiver' => $this->dev
+        ]));
 
         return $event;
     }
+
     /**
      * @return JsonResponse
      */

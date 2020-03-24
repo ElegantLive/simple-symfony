@@ -9,9 +9,11 @@
 namespace App\EventListener;
 
 use App\Exception\Base;
+use App\Message\ExceptionNotification;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpKernel\Event\ExceptionEvent;
+use Symfony\Component\Messenger\MessageBusInterface;
 
 /**
  * Class Exception
@@ -53,16 +55,31 @@ class Exception
      * @var array
      */
     private $data = [];
+    /**
+     * @var string
+     */
+    private $from;
+    /**
+     * @var string
+     */
+    private $dev;
+    /**
+     * @var MessageBusInterface
+     */
+    private $bus;
 
     /**
      * ExceptionListener constructor.
      * @param                 $env
      * @param LoggerInterface $logger
      */
-    public function __construct ($env, LoggerInterface $logger)
+    public function __construct ($env, $from, $dev, LoggerInterface $logger, MessageBusInterface $bus)
     {
-        $this->env = $env;
+        $this->env    = $env;
         $this->logger = $logger;
+        $this->from   = $from;
+        $this->dev    = $dev;
+        $this->bus    = $bus;
     }
 
     /**
@@ -173,6 +190,10 @@ class Exception
             'line'  => $exception->getLine(),
             'trace' => $exception->getTrace()
         ]);
+        $this->bus->dispatch(new ExceptionNotification($event->getRequest(), $exception, [
+            'sender'   => $this->from,
+            'receiver' => $this->dev
+        ]));
 
         return $event;
     }

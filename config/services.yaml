@@ -32,9 +32,15 @@ services:
 #            - { name: kernel.event_listener, event: kernel.exception }
 #        arguments:
 #            $env: '%env(APP_ENV)%'
+#            $from: '%env(FROM_EMAIL)%'
+#            $dev: '%env(DEV_EMAIL)%'
 
     App\EventSubscriber\Exception:
         tags:
             - { name: kernel.event_subscriber, event: kernel.exception }
         arguments:
             $env: '%env(APP_ENV)%'
+            $from: '%env(FROM_EMAIL)%'
+            $dev: '%env(DEV_EMAIL)%'
+
+    Symfony\Bundle\TwigBundle\Controller\ExceptionController: '@twig.controller.exception'
