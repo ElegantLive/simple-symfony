@@ -32,14 +32,14 @@ class VerificationCode
     ];
 
     /**
-     * 默认90秒过期
+     * 默认300秒过期
      * @var float|int
      */
-    private $expires = 90 * 1000;
+    private $expires = 300;
 
     private $expiresMap = [
-        self::REGISTER        => 180 * 1000,
-        self::CHANGE_PASSWORD => 90 * 1000,
+        self::REGISTER        => 720,
+        self::CHANGE_PASSWORD => 300,
     ];
     /**
      * @var string

@@ -52,7 +52,7 @@ class VerificationCodeNotificationHandler implements MessageHandlerInterface
         $user = $this->userRepository->find($codeNotification->getUid());
         if (empty($user)) return;
 
-        $minutes = $codeNotification->getTime() / (60 * 1000);
+        $minutes = $codeNotification->getTime() / 60;
         $title   = $this->titleMap[$codeNotification->getType()];
 
         $email = (new TemplatedEmail())->from($codeNotification->getFrom())
