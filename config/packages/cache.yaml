@@ -29,3 +29,12 @@ framework:
 #                adapter: cache.adapter.apcu
 #            cache.array:
 #                adapter: cache.adapter.array
+
+services:
+    app.my_cache_chain_adapter:
+        class: Symfony\Component\Cache\Adapter\ChainAdapter
+        arguments:
+#            - ['@cache.array', '@cache.apcu', '@cache.my_redis']
+            - ['@cache.my_redis']
+#            - 31536000 # One year
+            - 604800 # a week

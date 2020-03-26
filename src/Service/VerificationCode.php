@@ -81,7 +81,7 @@ class VerificationCode
         if (empty($format)) throw new \Exception('验证码type错误');
         $item = $this->cache->getItem(sprintf($format, $uid));
 
-//        if ($item->isHit()) throw new Locked(['message' => '验证码已发送，请稍后再试']);
+        if ($item->isHit()) throw new Locked(['message' => '验证码已发送，请稍后再试']);
 
         $code = rand(200000, 999999);
 
@@ -108,10 +108,11 @@ class VerificationCode
         $format = $this->getType($type);
         if (empty($format)) throw new \Exception('验证码type错误');
         $item = $this->cache->getItem(sprintf($format, $uid));
-        if (empty($item->isHit())) throw new Miss(['message' => '验证码已过期']);
+        if (empty($item->isHit())) throw new Miss(['message' => '请获取验证码']);
 
         if (intval($item->get()) !== $code) throw new Parameter(['message' => '验证码错误']);
 
+        $this->cache->deleteItem(sprintf($format, $uid));
         return true;
     }
 
