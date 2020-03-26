@@ -27,4 +27,6 @@ framework:
         routing:
             # Route your messages to the transports
             # 'App\Message\YourMessage': async
-            'App\Message\SignUpNotification':  async
+            'App\Message\SignUpNotification': async
+            'App\Message\ExceptionNotification': sync
+            'App\Message\VerificationCodeNotification': sync

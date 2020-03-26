@@ -17,10 +17,10 @@ class Comment
     private $id;
 
     /**
-     * @ORM\OneToOne(targetEntity="App\Entity\Articel", cascade={"persist", "remove"})
+     * @ORM\OneToOne(targetEntity="App\Entity\Article", cascade={"persist", "remove"})
      * @ORM\JoinColumn(nullable=false)
      */
-    private $articel;
+    private $Article;
 
     /**
      * @ORM\OneToOne(targetEntity="App\Entity\User", cascade={"persist", "remove"})
@@ -48,14 +48,14 @@ class Comment
         return $this->id;
     }
 
-    public function getArticel(): ?Articel
+    public function getArticle(): ?Article
     {
-        return $this->articel;
+        return $this->Article;
     }
 
-    public function setArticel(Articel $articel): self
+    public function setArticle(Article $Article): self
     {
-        $this->articel = $articel;
+        $this->Article = $Article;
 
         return $this;
     }

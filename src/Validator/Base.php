@@ -29,7 +29,11 @@ abstract class Base
     /**
      * @var array
      */
-    protected $fields = [];
+    protected $fields               = [];
+    public    $allowExtraFields     = false;
+    public    $allowMissingFields   = false;
+    public    $extraFieldsMessage   = 'This field was not expected.';
+    public    $missingFieldsMessage = '请移除额外的字段 {{ field }}';
 
     /**
      * @var ValidatorInterface
@@ -61,8 +65,10 @@ abstract class Base
     {
         $this->collection = new Assert\Collection([
             'fields'               => $this->fields,
-            'missingFieldsMessage' => '缺少定义字段 {{ field }}',
-            'extraFieldsMessage'   => '请移除额外的字段 {{ field }}'
+            'missingFieldsMessage' => $this->missingFieldsMessage,
+            'extraFieldsMessage'   => $this->extraFieldsMessage,
+            'allowExtraFields'     => $this->allowExtraFields,
+            'allowMissingFields'   => $this->allowMissingFields
         ]);
     }
 

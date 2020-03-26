@@ -8,8 +8,8 @@ framework:
         # Other options include:
 
         # Redis
-        #app: cache.adapter.redis
-        #default_redis_provider: redis://192.168.10.10:6379
+        app: cache.adapter.redis
+        default_redis_provider: '%env(REDIS_DSN)%'
 
         # APCu (not recommended with heavy random-write workloads as memory fragmentation can cause perf issues)
         #app: cache.adapter.apcu
@@ -27,13 +27,5 @@ framework:
                 provider: '%env(REDIS_DSN)%'
 #            cache.apcu:
 #                adapter: cache.adapter.apcu
-            cache.array:
-                adapter: cache.adapter.array
-
-services:
-    app.my_cache_chain_adapter:
-        class: Symfony\Component\Cache\Adapter\ChainAdapter
-        arguments:
-#            - ['@cache.array', '@cache.apcu', '@cache.my_redis']
-            - ['@cache.array', '@cache.my_redis']
-            - 31536000 # One year
+#            cache.array:
+#                adapter: cache.adapter.array

@@ -14,10 +14,13 @@ use App\Exception\Gone;
 use App\Exception\Miss;
 use App\Exception\Success;
 use App\Exception\Used;
+use App\Message\SignUpNotification;
 use App\Repository\UserRepository;
 use App\Service\Request;
 use App\Service\Token;
 use App\Service\Serializer;
+use App\Service\VerificationCode;
+use App\Validator\ChangePassword;
 use App\Validator\Register;
 use App\Validator\SetAvatar;
 use Doctrine\ORM\EntityManagerInterface;
@@ -52,6 +55,10 @@ class User extends AbstractController
      * @var Serializer
      */
     private $serializer;
+    /**
+     * @var VerificationCode
+     */
+    private $code;
 
     /**
      * User constructor.
@@ -59,16 +66,19 @@ class User extends AbstractController
      * @param EntityManagerInterface $entityManager
      * @param MessageBusInterface    $bus
      * @param Serializer             $serializer
+     * @param VerificationCode       $code
      */
     public function __construct (UserRepository $userRepository,
                                  EntityManagerInterface $entityManager,
                                  MessageBusInterface $bus,
-                                 Serializer $serializer)
+                                 Serializer $serializer,
+                                 VerificationCode $code)
     {
         $this->userRepository = $userRepository;
         $this->entityManager  = $entityManager;
         $this->bus            = $bus;
         $this->serializer     = $serializer;
+        $this->code           = $code;
     }
 
     /**
@@ -96,7 +106,7 @@ class User extends AbstractController
         $this->entityManager->persist($user);
         $this->entityManager->flush();
 
-//        $this->bus->dispatch((new SignUpNotification($user->getId())));
+        $this->bus->dispatch(new SignUpNotification($user->getId()));
 
         throw new Success();
     }
@@ -135,6 +145,44 @@ class User extends AbstractController
         if (!$user) throw new Miss();
 
         $user->setTrustFields($data);
+        $this->entityManager->flush();
+
+        throw new Success();
+    }
+
+    /**
+     * @Route("/password/code", methods={"GET"}, name="changePasswordCode")
+     * @param Token $token
+     * @throws \Psr\Cache\InvalidArgumentException
+     */
+    public function changePasswordCode (Token $token)
+    {
+        $uid = $token->getCurrentTokenKey('id');
+        $this->code->sendCode($this->code::CHANGE_PASSWORD, $uid);
+
+        throw new Success(['message' => '发送成功']);
+    }
+
+    /**
+     * @Route("/password", methods={"PATCH"}, name="changePassword")
+     * @param Token   $token
+     * @param Request $request
+     * @throws \Psr\Cache\InvalidArgumentException
+     * @throws \Exception
+     */
+    public function password (Token $token, Request $request)
+    {
+        $uid  = $token->getCurrentTokenKey('id');
+        $data = $request->getData();
+
+        (new ChangePassword())->check($data);
+        $this->code->checkCode($this->code::CHANGE_PASSWORD, $uid, $data['code']);
+
+        $user = $this->userRepository->find($uid);
+
+        $user->setRand();
+        $user->setPassword($data['password']);
+
         $this->entityManager->flush();
 
         throw new Success();
@@ -211,8 +259,8 @@ class User extends AbstractController
 
     /**
      * @Route("/avatar/history", methods={"PUT"}, name="setAvatarByHistory", )
-     * @param Token             $token
-     * @param Request           $request
+     * @param Token   $token
+     * @param Request $request
      * @throws \Psr\Cache\InvalidArgumentException
      * @throws \Exception
      */

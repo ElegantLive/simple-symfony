@@ -44,7 +44,7 @@ class Token
     public function __construct (Request $request, AdapterInterface $cache)
     {
         $this->request = $request;
-        $this->cache = $cache;
+        $this->cache   = $cache;
     }
 
     /**
@@ -114,6 +114,7 @@ class Token
 
     /**
      * 检查当前 token 是否失效
+     * @throws \Psr\Cache\InvalidArgumentException
      */
     public function checkToken ()
     {
@@ -137,7 +138,7 @@ class Token
     private function getTokenFromRequest ()
     {
         $token = $this->request->getRequest()->headers->get('token');
-        if (empty($token)) throw new TokenException(['message' => '尝试获取的key不存在']);
+        if (empty($token)) throw new TokenException(['message' => '尝试获取的token不存在']);
 
         return $token;
     }
