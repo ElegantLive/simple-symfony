@@ -15,7 +15,7 @@ class UserAvatarHistory extends Base
 {
     use SoftDeleteableEntity;
 
-    protected $hidden = ['user_id', 'user', 'deleted', 'deletedAt'];
+    protected $hidden = ['user', 'deleted', 'deletedAt'];
 
     /**
      * @ORM\Id()
@@ -72,6 +72,7 @@ class UserAvatarHistory extends Base
 
     /**
      * @ORM\ManyToOne(targetEntity="App\Entity\User", inversedBy="userAvatarHistories")
+     * @ORM\JoinColumn(nullable=false)
      */
     private $user;
 

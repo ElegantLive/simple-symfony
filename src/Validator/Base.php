@@ -30,10 +30,10 @@ abstract class Base
      * @var array
      */
     protected $fields               = [];
-    public    $allowExtraFields     = false;
-    public    $allowMissingFields   = false;
-    public    $extraFieldsMessage   = 'This field was not expected.';
-    public    $missingFieldsMessage = '请移除额外的字段 {{ field }}';
+    protected $allowExtraFields     = false;
+    protected $allowMissingFields   = false;
+    protected $extraFieldsMessage   = '请移除额外的字段 {{ field }}';
+    protected $missingFieldsMessage = '字段 {{ field }} 丢失';
 
     /**
      * @var ValidatorInterface

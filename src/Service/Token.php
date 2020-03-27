@@ -37,6 +37,12 @@ class Token
     private $cache;
 
     /**
+     * 过期时间一天
+     * @var int
+     */
+    private $expires = 86400;
+
+    /**
      * Token constructor.
      * @param Request          $request
      * @param AdapterInterface $cache

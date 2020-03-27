@@ -17,6 +17,15 @@ class Base
     use Hidden;
     use Trust;
 
+    const ORDER_DESC = 'desc';
+    const ORDER_ASC = 'asc';
+
+    public static $_orderState = [
+        self::ORDER_DESC,
+        self::ORDER_ASC
+    ];
+
     protected $trust = [];
     protected $hidden = [];
+    protected $deleteField = ['deletedAt', 'deleted'];
 }

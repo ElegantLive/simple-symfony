@@ -2,13 +2,21 @@
 
 namespace App\Entity;
 
+use App\Entity\Traits\Timestamps;
 use Doctrine\ORM\Mapping as ORM;
+use Gedmo\SoftDeleteable\Traits\SoftDeleteableEntity;
+use Gedmo\Mapping\Annotation as Gedmo;
 
 /**
  * @ORM\Entity(repositoryClass="App\Repository\CommentRepository")
+ * @Gedmo\SoftDeleteable(fieldName="deletedAt", timeAware=false, hardDelete=false)
+ * @ORM\HasLifecycleCallbacks()
  */
-class Comment
+class Comment extends Base
 {
+    use Timestamps;
+    use SoftDeleteableEntity;
+
     /**
      * @ORM\Id()
      * @ORM\GeneratedValue()
@@ -34,14 +42,16 @@ class Comment
     private $content;
 
     /**
+     * @var integer
      * @ORM\Column(type="integer")
      */
-    private $likeCount;
+    private $likeCount = 0;
 
     /**
+     * @var integer
      * @ORM\Column(type="integer")
      */
-    private $disLikeCount;
+    private $disLikeCount = 0;
 
     public function getId(): ?int
     {

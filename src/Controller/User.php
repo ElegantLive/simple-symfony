@@ -185,6 +185,8 @@ class User extends AbstractController
 
         $this->entityManager->flush();
 
+        $token->cleanToken();
+
         throw new Success();
     }
 

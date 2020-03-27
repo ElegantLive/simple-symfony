@@ -2,13 +2,23 @@
 
 namespace App\Entity;
 
+use App\Entity\Traits\Timestamps;
 use Doctrine\ORM\Mapping as ORM;
+use Gedmo\SoftDeleteable\Traits\SoftDeleteableEntity;
+use Gedmo\Mapping\Annotation as Gedmo;
 
 /**
  * @ORM\Entity(repositoryClass="App\Repository\TagRepository")
+ * @Gedmo\SoftDeleteable(fieldName="deletedAt", timeAware=false, hardDelete=false)
+ * @ORM\HasLifecycleCallbacks()
  */
-class Tag
+class Tag extends Base
 {
+    use Timestamps;
+    use SoftDeleteableEntity;
+
+    protected $deleteField = ['deletedAt', 'deleted'];
+
     /**
      * @ORM\Id()
      * @ORM\GeneratedValue()
@@ -27,14 +37,15 @@ class Tag
     private $description;
 
     /**
+     * @var integer
      * @ORM\Column(type="integer")
      */
-    private $useCount;
+    private $useCount = 0;
 
     /**
      * @ORM\Column(type="boolean")
      */
-    private $isHot;
+    private $isHot = false;
 
     public function getId(): ?int
     {

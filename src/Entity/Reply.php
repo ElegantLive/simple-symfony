@@ -2,13 +2,21 @@
 
 namespace App\Entity;
 
+use App\Entity\Traits\Timestamps;
 use Doctrine\ORM\Mapping as ORM;
+use Gedmo\SoftDeleteable\Traits\SoftDeleteableEntity;
+use Gedmo\Mapping\Annotation as Gedmo;
 
 /**
  * @ORM\Entity(repositoryClass="App\Repository\ReplyRepository")
+ * @Gedmo\SoftDeleteable(fieldName="deletedAt", timeAware=false, hardDelete=false)
+ * @ORM\HasLifecycleCallbacks()
  */
-class Reply
+class Reply extends Base
 {
+    use Timestamps;
+    use SoftDeleteableEntity;
+
     /**
      * @ORM\Id()
      * @ORM\GeneratedValue()
@@ -29,12 +37,12 @@ class Reply
     /**
      * @ORM\Column(type="integer")
      */
-    private $likeCount;
+    private $likeCount = 0;
 
     /**
      * @ORM\Column(type="integer")
      */
-    private $disLikeCount;
+    private $disLikeCount = 0;
 
     public function getId(): ?int
     {

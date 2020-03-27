@@ -47,9 +47,18 @@ trait Hidden
     public function filterHidden (array $filter = [], bool $replace = false)
     {
         $_filter = array_merge($this->_filter, $this->hidden);
+        if (property_exists($this, 'deletedAt')) $_filter = array_merge($_filter, $this->deleteField);
         $_filter = $replace ? $filter: array_merge($_filter, $filter);
 
         return [AbstractNormalizer::IGNORED_ATTRIBUTES => $_filter];
+    }
+
+    /**
+     * @return array
+     */
+    public function filterDeleted ()
+    {
+        return [AbstractNormalizer::ATTRIBUTES => $this->deleteField];
     }
 
     /**

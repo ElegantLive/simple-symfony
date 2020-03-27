@@ -2,6 +2,7 @@
 
 namespace App\Repository;
 
+use App\Entity\Tag;
 use App\Entity\ThirdRelation;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Common\Persistence\ManagerRegistry;
@@ -14,7 +15,7 @@ use Doctrine\Common\Persistence\ManagerRegistry;
  */
 class ThirdRelationRepository extends ServiceEntityRepository
 {
-    public function __construct(ManagerRegistry $registry)
+    public function __construct (ManagerRegistry $registry)
     {
         parent::__construct($registry, ThirdRelation::class);
     }
@@ -47,4 +48,57 @@ class ThirdRelationRepository extends ServiceEntityRepository
         ;
     }
     */
+
+    public function suppleTagsToArticle (TagRepository $repository, int $articleId)
+    {
+        $suppleTag = [];
+
+        $map     = [
+            'first'  => $articleId,
+            'relate' => ThirdRelation::ARTICLE_TAGS
+        ];
+        $list = $this->findBy($map);
+
+        $tagIds = [];
+        foreach ($list as $item) {
+            array_push($tagIds, $item->getSecond());
+        }
+
+        if ($tagIds) {
+            $tagList = $repository->findBy(['id' => $tagIds]);
+
+            foreach ($tagList as $tag) {
+                $tagItem = [
+                    'id'   => $tag->getId(),
+                    'name' => $tag->getName()
+                ];
+
+                array_push($suppleTag, $tagItem);
+            }
+        }
+
+        return $suppleTag;
+    }
+
+    /**
+     * @param string $type
+     * @param int    $first
+     * @param int    $second
+     * @return bool
+     * @throws \Exception
+     */
+    public function suppleExist (string $type, int $first, int $second)
+    {
+        if (in_array($type, ThirdRelation::$types) === false) throw new \Exception(sprintf('checkout your $type - %s', $type));
+        if (empty($first)) throw new \Exception(sprintf('checkout your $first - %s', $first));
+        if (empty($second)) throw new \Exception(sprintf('checkout your $second - %s', $second));
+
+        $record = $this->findOneBy([
+            'relate' => $type,
+            'first'  => $first,
+            'second' => $second
+        ]);
+
+        return $record ? true: false;
+    }
 }
