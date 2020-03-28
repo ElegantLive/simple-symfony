@@ -11,6 +11,7 @@ namespace App\Service;
 
 use App\Exception\Forbidden;
 use App\Exception\Token as TokenException;
+use App\Repository\UserRepository;
 use Faker\Factory;
 use Symfony\Component\Cache\Adapter\AdapterInterface;
 
@@ -41,16 +42,22 @@ class Token
      * @var int
      */
     private $expires = 86400;
+    /**
+     * @var UserRepository
+     */
+    private $userRepository;
 
     /**
      * Token constructor.
      * @param Request          $request
      * @param AdapterInterface $cache
+     * @param UserRepository   $userRepository
      */
-    public function __construct (Request $request, AdapterInterface $cache)
+    public function __construct (Request $request, AdapterInterface $cache, UserRepository $userRepository)
     {
-        $this->request = $request;
-        $this->cache   = $cache;
+        $this->request        = $request;
+        $this->cache          = $cache;
+        $this->userRepository = $userRepository;
     }
 
     /**
@@ -87,7 +94,7 @@ class Token
         $token     = self::generateKey();
         $tokenItem = self::getCache()->getItem($token);
         $tokenItem->set($var);
-        $tokenItem->expiresAfter(3000);
+        $tokenItem->expiresAfter($this->expires);
 
         self::getCache()->save($tokenItem);
 
@@ -116,6 +123,21 @@ class Token
         if (isset($var[$key])) return $var[$key];
 
         throw new TokenException(['message' => '尝试获取的key不存在']);
+    }
+
+    /**
+     * @return \App\Entity\User|null
+     * @throws \Psr\Cache\InvalidArgumentException
+     */
+    public function getCurrentUser ()
+    {
+        $userId = self::getCurrentTokenKey('id');
+
+        $user = $this->userRepository->find($userId);
+        if (empty($user)) throw new TokenException(['message' => '请重新登录']);
+        if ($user->isDeleted()) throw new TokenException(['message' => '用户已注销']);
+
+        return $user;
     }
 
     /**

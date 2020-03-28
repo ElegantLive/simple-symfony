@@ -20,8 +20,8 @@ class Article extends Base
     protected $hidden = ['user'];
     protected $trust  = ['title', 'content', 'description'];
 
-    const VIEW = 'view_count';
-    const TIME = 'created_at';
+    const VIEW = 'viewCount';
+    const TIME = 'createdAt';
 
     public static $_byState = [
         self::VIEW,
@@ -73,6 +73,16 @@ class Article extends Base
      * @ORM\JoinColumn(nullable=false)
      */
     private $user;
+
+    /**
+     * @ORM\Column(type="integer")
+     */
+    private $likeCount = 0;
+
+    /**
+     * @ORM\Column(type="integer")
+     */
+    private $disLikeCount = 0;
 
     public function getId (): ?int
     {
@@ -163,34 +173,27 @@ class Article extends Base
         return $this;
     }
 
-    public function suppleTagsToArticle (ServiceEntityRepository $repository)
+    public function getLikeCount(): ?int
     {
-        $suppleTag = [
-            'relate' => ThirdRelation::ARTICLE_TAGS,
-            'first' => $this->getId(),
-        ];
+        return $this->likeCount;
+    }
 
-        $tagList = $this->findBy($map);
+    public function setLikeCount(int $likeCount): self
+    {
+        $this->likeCount = $likeCount;
 
-        $tagIds = [];
-        foreach ($tagList as $item) {
-            array_push($tagIds, $item->getSecond());
-        }
+        return $this;
+    }
 
-        if ($tagIds) {
-            $tagIds  = implode(',', $tagIds);
-            $tagList = $repository->findBy($tagIds);
+    public function getDisLikeCount(): ?int
+    {
+        return $this->disLikeCount;
+    }
 
-            array_map(function (Tag $tag) {
-                $tagItem = [
-                    'id'   => $tag->getId(),
-                    'name' => $tag->getName()
-                ];
+    public function setDisLikeCount(int $disLikeCount): self
+    {
+        $this->disLikeCount = $disLikeCount;
 
-                array_push($suppleTag, $tagItem);
-            }, $tagList);
-        }
-
-        return $suppleTag;
+        return $this;
     }
 }

@@ -9,7 +9,6 @@
 namespace App\Controller;
 
 
-use App\Controller\Traits\QueryCover;
 use App\Entity\Article as ArticleEntity;
 use App\Entity\Base;
 use App\Entity\Tag;
@@ -39,8 +38,6 @@ use Symfony\Component\Routing\Annotation\Route;
  */
 class Article extends AbstractController
 {
-    use QueryCover;
-
     /**
      * @var EntityManagerInterface
      */
@@ -82,38 +79,80 @@ class Article extends AbstractController
     }
 
     /**
-     * @Route("/{id}", methods={"GET"}, name="articleDetail")
-     * @param Token $token
-     * @param int   $id
+     * @Route("/self/list", methods={"GET"}, name="getSelfArticleList")
+     * @param Request $request
+     * @param Token   $token
+     * @param         $page
+     * @param         $size
+     * @param string  $order
+     * @param string  $by
      * @throws \Psr\Cache\InvalidArgumentException
      * @throws \Exception
      */
-    public function detail (Token $token, int $id)
+    public function getSelfArticle (Request $request,
+                                    Token $token,
+                                    $page,
+                                    $size,
+                                    $order = Base::ORDER_DESC,
+                                    $by = ArticleEntity::TIME)
     {
-        if (empty($id)) throw new Parameter(['message' => "文章id丢失"]);
+        $user = $token->getCurrentUser();
 
-        $user = null;
-        try {
-            $userId = $token->getCurrentTokenKey('id');
 
-            $user = $this->userRepository->find($userId);
-        } catch (\Exception $exception) {
+        $data = compact('page', 'size', 'order', 'by');
+
+        $params = $request->request->query->all();
+        foreach (array_keys($data) as $array_key) {
+            if (array_key_exists($array_key, $params) === false) continue;
+            if (in_array($array_key, ['page', 'size'])) $params[$array_key] = (int)$params[$array_key];
+
+            $$array_key       = $params[$array_key];
+            $data[$array_key] = $params[$array_key];
         }
 
-        $article = $this->articleRepository->find($id);
-        if (empty($article)) throw new Miss(['message' => '文章不存在']);
-        if ($article->isDeleted()) throw new Success(['data' => $this->serializer->normalize($article, 'json', $article->filterDeleted())]);
+        (new GetArticle())->check($data);
 
-        $articleData = $this->serializer->normalize($article, 'json', $article->filterHidden());
+        $offset = ($page - 1) * $size;
+        $max    = $offset + $size;
 
-        $articleData['tag'] = $this->thirdRelationRepository->suppleTagsToArticle($this->tagRepository, $article->getId());
+        $qb = $this->articleRepository->createQueryBuilder('t');
 
-        if ($user) {
-            $articleData['isLike']    = $this->thirdRelationRepository->suppleExist(ThirdRelation::ARTICLE_LIKES, $article->getId(), $user->getId());
-            $articleData['isDisLike'] = $this->thirdRelationRepository->suppleExist(ThirdRelation::ARTICLE_DISLIKES, $article->getId(), $user->getId());
-        }
+        $preQb = $qb->where("t.user = :userId")
+            ->setParameter('userId', $user->getId())
+            ->orderBy('t.' . $by, $order);
 
-        throw new Success(['data' => $articleData]);
+        if ($by !== ArticleEntity::TIME) $preQb->addOrderBy('t.' . ArticleEntity::TIME, 'desc');
+
+        $articles = $preQb->setFirstResult($offset)
+            ->setMaxResults($max)
+            ->getQuery()
+            ->getResult();
+
+        $results = $preQb->select('count(1) as _c')->getQuery()->getArrayResult();
+
+        $total = (int)$results[0]['_c'];
+
+        $pageTotal = ceil($total / $size);
+
+        $list = [];
+
+        array_map(function (ArticleEntity $article) use ($user, &$list) {
+            $filter   = $article->isDeleted() ? $article->filterDeleted() : $article->filterHidden();
+            $listItem = $this->serializer->normalize($article, 'json', $filter);
+
+            if ($article->isDeleted() == false) {
+                $listItem['tag'] = $this->thirdRelationRepository->suppleTagsToArticle($this->tagRepository, $article->getId());
+
+                if ($user) {
+                    $listItem['isLike']    = $this->thirdRelationRepository->suppleExist(ThirdRelation::ARTICLE_LIKES, $user->getId(), $article->getId());
+                    $listItem['isDisLike'] = $this->thirdRelationRepository->suppleExist(ThirdRelation::ARTICLE_DISLIKES, $user->getId(), $article->getId());
+                }
+            }
+
+            array_push($list, $listItem);
+        }, $articles);
+
+        throw new Success(['data' => compact('page', 'size', 'total', 'pageTotal', 'list')]);
     }
 
     /**
@@ -136,9 +175,7 @@ class Article extends AbstractController
     {
         $user = null;
         try {
-            $id = $token->getCurrentTokenKey('id');
-
-            $user = $this->userRepository->find($id);
+            $user = $token->getCurrentUser();
         } catch (\Exception $exception) {
         }
 
@@ -156,12 +193,14 @@ class Article extends AbstractController
         (new GetArticle())->check($data);
 
         $offset = ($page - 1) * $size;
-        $max = $offset + $size;
+        $max    = $offset + $size;
 
         $qb = $this->articleRepository->createQueryBuilder('t');
 
         $preQb = $qb->where($qb->expr()->isNull('t.deletedAt'))
             ->orderBy('t.' . $by, $order);
+
+        if ($by !== ArticleEntity::TIME) $preQb->addOrderBy('t.' . ArticleEntity::TIME, 'desc');
 
         $articles = $preQb->setFirstResult($offset)
             ->setMaxResults($max)
@@ -175,19 +214,61 @@ class Article extends AbstractController
         $pageTotal = ceil($total / $size);
 
         $list = [];
-        foreach ($articles as $article) {
+
+        array_map(function (ArticleEntity $article) use ($user, &$list) {
             $listItem = $this->serializer->normalize($article, 'json', $article->filterHidden());
 
             $listItem['tag'] = $this->thirdRelationRepository->suppleTagsToArticle($this->tagRepository, $article->getId());
 
             if ($user) {
-                $listItem['isLike']    = $this->thirdRelationRepository->suppleExist(ThirdRelation::ARTICLE_LIKES, $article->getId(), $user->getId());
-                $listItem['isDisLike'] = $this->thirdRelationRepository->suppleExist(ThirdRelation::ARTICLE_DISLIKES, $article->getId(), $user->getId());
+                $listItem['isLike']    = $this->thirdRelationRepository->suppleExist(ThirdRelation::ARTICLE_LIKES, $user->getId(), $article->getId());
+                $listItem['isDisLike'] = $this->thirdRelationRepository->suppleExist(ThirdRelation::ARTICLE_DISLIKES, $user->getId(), $article->getId());
             }
             array_push($list, $listItem);
-        }
+        }, $articles);
 
         throw new Success(['data' => compact('page', 'size', 'total', 'pageTotal', 'list')]);
+    }
+
+    /**
+     * @Route("/{id}", methods={"GET"}, name="articleDetail")
+     * @param Token $token
+     * @param int   $id
+     * @throws \Psr\Cache\InvalidArgumentException
+     * @throws \Exception
+     */
+    public function detail (Token $token, int $id)
+    {
+        if (empty($id)) throw new Parameter(['message' => "文章id丢失"]);
+
+        $user = null;
+        try {
+            $userId = $token->getCurrentTokenKey('id');
+
+            $user = $this->userRepository->find($userId);
+        } catch (\Exception $exception) {
+        }
+
+        $article = $this->articleRepository->find($id);
+        if (empty($article)) throw new Miss(['message' => '文章不存在']);
+        if ($article->isDeleted()) throw new Gone([
+            'data' => $this->serializer->normalize($article, 'json', $article->filterDeleted()),
+            'message' => '文章已被撤下'
+        ]);
+
+        $articleData = $this->serializer->normalize($article, 'json', $article->filterHidden());
+
+        $articleData['tag'] = $this->thirdRelationRepository->suppleTagsToArticle($this->tagRepository, $article->getId());
+
+        if ($user) {
+            $articleData['isLike']    = $this->thirdRelationRepository->suppleExist(ThirdRelation::ARTICLE_LIKES, $user->getId(), $article->getId());
+            $articleData['isDisLike'] = $this->thirdRelationRepository->suppleExist(ThirdRelation::ARTICLE_DISLIKES, $user->getId(), $article->getId());
+        }
+
+        $article->setCommentCount(bcadd($article->getCommentCount(), 1));
+        $this->entityManager->flush();
+
+        throw new Success(['data' => $articleData]);
     }
 
     /**

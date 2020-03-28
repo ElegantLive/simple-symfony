@@ -16,6 +16,7 @@ class UserAvatarHistory extends Base
     use SoftDeleteableEntity;
 
     protected $hidden = ['user', 'deleted', 'deletedAt'];
+    protected $normal = ['id', 'publicPath', 'createdAt', 'type', 'size'];
 
     /**
      * @ORM\Id()
@@ -71,7 +72,7 @@ class UserAvatarHistory extends Base
     private $updatedAt;
 
     /**
-     * @ORM\ManyToOne(targetEntity="App\Entity\User", inversedBy="userAvatarHistories")
+     * @ORM\ManyToOne(targetEntity="App\Entity\User")
      * @ORM\JoinColumn(nullable=false)
      */
     private $user;
@@ -159,12 +160,18 @@ class UserAvatarHistory extends Base
     }
 
     /**
-     * Returns createdAt.
+     * @param bool $default
      * @return mixed
      */
-    public function getCreatedAt ()
+    public function getCreatedAt ($default = false)
     {
-        return $this->createdAt;
+        $time = $this->isTimestamp($this->createdAt);
+
+        if ($default) {
+            return $time ? $this->createdAt: strtotime($this->createdAt);
+        } else {
+            return $time ? date('Y-m-d H:i:s', $this->createdAt): $this->createdAt;
+        }
     }
 
     /**
@@ -180,12 +187,18 @@ class UserAvatarHistory extends Base
     }
 
     /**
-     * Returns updatedAt.
+     * @param bool $default
      * @return mixed
      */
-    public function getUpdatedAt ()
+    public function getUpdatedAt ($default = false)
     {
-        return $this->updatedAt;
+        $time = $this->isTimestamp($this->updatedAt);
+
+        if ($default) {
+            return $time ? $this->updatedAt: strtotime($this->updatedAt);
+        } else {
+            return $time ? date('Y-m-d H:i:s', $this->updatedAt): $this->updatedAt;
+        }
     }
 
     public function getUser(): ?User
@@ -198,5 +211,22 @@ class UserAvatarHistory extends Base
         $this->user = $user;
 
         return $this;
+    }
+
+    /**
+     * checkout string is valid timestamp
+     * @param $string
+     * @return bool
+     */
+    private function isTimestamp ($string)
+    {
+        $is = true;
+        try {
+            new \DateTime('@' . $string);
+        } catch (\Exception $exception) {
+            $is = false;
+        }
+
+        return $is;
     }
 }

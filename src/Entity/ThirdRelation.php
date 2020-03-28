@@ -16,10 +16,10 @@ class ThirdRelation extends Base
     const ARTICLE_TAGS     = 'ARTICLE_TAGS';
     const ARTICLE_LIKES    = 'ARTICLE_LIKES';
     const ARTICLE_DISLIKES = 'ARTICLE_DISLIKES';
-    const COMMENT_LIKES    = 'ARTICLE_LIKES';
-    const COMMENT_DISLIKES = 'ARTICLE_DISLIKES';
-    const REPLY_LIKES      = 'ARTICLE_LIKES';
-    const REPLY_DISLIKES   = 'ARTICLE_DISLIKES';
+    const COMMENT_LIKES    = 'COMMENT_LIKES';
+    const COMMENT_DISLIKES = 'COMMENT_DISLIKES';
+    const REPLY_LIKES      = 'REPLY_LIKES';
+    const REPLY_DISLIKES   = 'REPLY_DISLIKES';
 
     public static $types = [
         self::ARTICLE_DISLIKES,

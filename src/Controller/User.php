@@ -10,11 +10,14 @@ namespace App\Controller;
 
 
 use App\Entity\UserAvatarHistory;
+use App\Exception\Done;
+use App\Exception\Forbidden;
 use App\Exception\Gone;
 use App\Exception\Miss;
 use App\Exception\Success;
 use App\Exception\Used;
 use App\Message\SignUpNotification;
+use App\Repository\UserAvatarHistoryRepository;
 use App\Repository\UserRepository;
 use App\Service\Request;
 use App\Service\Token;
@@ -28,6 +31,7 @@ use Stof\DoctrineExtensionsBundle\Uploadable\UploadableManager;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Routing\Annotation\Route;
+use Symfony\Component\Serializer\Normalizer\AbstractNormalizer;
 
 /**
  * @Route("/user")
@@ -59,26 +63,33 @@ class User extends AbstractController
      * @var VerificationCode
      */
     private $code;
+    /**
+     * @var UserAvatarHistoryRepository
+     */
+    private $avatarHistoryRepository;
 
     /**
      * User constructor.
-     * @param UserRepository         $userRepository
-     * @param EntityManagerInterface $entityManager
-     * @param MessageBusInterface    $bus
-     * @param Serializer             $serializer
-     * @param VerificationCode       $code
+     * @param UserRepository              $userRepository
+     * @param EntityManagerInterface      $entityManager
+     * @param MessageBusInterface         $bus
+     * @param Serializer                  $serializer
+     * @param VerificationCode            $code
+     * @param UserAvatarHistoryRepository $avatarHistoryRepository
      */
     public function __construct (UserRepository $userRepository,
                                  EntityManagerInterface $entityManager,
                                  MessageBusInterface $bus,
                                  Serializer $serializer,
-                                 VerificationCode $code)
+                                 VerificationCode $code,
+                                 UserAvatarHistoryRepository $avatarHistoryRepository)
     {
-        $this->userRepository = $userRepository;
-        $this->entityManager  = $entityManager;
-        $this->bus            = $bus;
-        $this->serializer     = $serializer;
-        $this->code           = $code;
+        $this->userRepository          = $userRepository;
+        $this->entityManager           = $entityManager;
+        $this->bus                     = $bus;
+        $this->serializer              = $serializer;
+        $this->code                    = $code;
+        $this->avatarHistoryRepository = $avatarHistoryRepository;
     }
 
     /**
@@ -112,18 +123,27 @@ class User extends AbstractController
     }
 
     /**
-     * @Route("/info", methods={"GET"}, name="userInfo")
-     * @param Token $token
-     * @throws \Psr\Cache\InvalidArgumentException
+     * @Route("/info/{id}", methods={"GET"}, name="userInfo")
+     * @param int $id
      */
-    public function info (Token $token)
+    public function info (int $id)
     {
-        $id = $token->getCurrentTokenKey('id');
-
-        $user = $this->userRepository->findOneBy(['id' => $id]);
+        $user = $this->userRepository->find($id);
 
         if (empty($user)) throw new Miss();
         if ($user->isDeleted()) throw new Gone();
+
+        throw new Success(['data' => $this->serializer->normalize($user, 'json', $user->filterHidden())]);
+    }
+
+    /**
+     * @Route("/self", methods={"GET"}, name="getSelfInfo")
+     * @param Token $token
+     * @throws \Psr\Cache\InvalidArgumentException
+     */
+    public function getSelf (Token $token)
+    {
+        $user = $token->getCurrentUser();
 
         throw new Success(['data' => $this->serializer->normalize($user, 'json', $user->filterHidden())]);
     }
@@ -234,18 +254,17 @@ class User extends AbstractController
 
         $this->entityManager->beginTransaction();
         try {
+            $oldCurrent = $this->avatarHistoryRepository->findOneBy(['current' => true]);
+            if ($oldCurrent) {
+                $oldCurrent->setCurrent(false);
+                $this->entityManager->flush();
+            }
+
             $uploadableManager->markEntityToUpload($avatarEntity, $data['avatar']);
             $avatarEntity->setCurrent(true);
             $avatarEntity->setUser($user);
 
             $this->entityManager->persist($avatarEntity);
-            foreach ($user->getUserAvatarHistories() as $index => $item) {
-                if (!$item->getCurrent()) continue;
-                if ($item->getId() !== $avatarEntity->getId()) {
-                    $item->setCurrent(false);
-                    continue;
-                }
-            }
             $this->entityManager->flush();
 
             $user->setAvatar($avatarEntity->getPublicPath());
@@ -268,28 +287,24 @@ class User extends AbstractController
      */
     public function setAvatarByHistory (Token $token, Request $request)
     {
-        $id = $token->getCurrentTokenKey('id');
-
-        $user = $this->userRepository->findOneBy(['id' => $id]);
-
-        if (empty($user)) throw new Miss();
-        if ($user->isDeleted()) throw new Gone();
+        $user = $token->getCurrentUser();
 
         $data = $request->getData();
 
         $this->entityManager->beginTransaction();
         try {
-            $avatar = $user->getAvatar();
-            foreach ($user->getUserAvatarHistories() as $index => $item) {
-                if ($item->getId() === $data['id']) {
-                    $item->setCurrent(true);
-                    $avatar = $item->getPublicPath();
-                    continue;
-                }
-                if (!$item->getCurrent()) continue;
-                $item->setCurrent(false);
-            }
-            $user->setAvatar($avatar);
+            $oldCurrent = $this->avatarHistoryRepository->findOneBy(['current' => true]);
+            $oldCurrent->setCurrent(false);
+
+            $newCurrent = $this->avatarHistoryRepository->find($data['id']);
+            if (empty($newCurrent)) throw new Miss(['message' => '历史头像失效']);
+            if ($newCurrent->isDeleted()) throw new Gone(['message' => '历史头像失效']);
+            if ($newCurrent->getUser()->getId() !== $user->getId()) throw new Forbidden(['message' => '无权操作']);
+            if (true === $newCurrent->getCurrent()) throw new Done();
+
+            $newCurrent->setCurrent(true);
+            $user->setAvatar($newCurrent->getPublicPath());
+
             $this->entityManager->flush();
 
             $this->entityManager->commit();
@@ -308,16 +323,14 @@ class User extends AbstractController
      */
     public function avatarHistory (Token $token)
     {
-        $id = $token->getCurrentTokenKey('id');
+        $user = $token->getCurrentUser();
 
-        $user = $this->userRepository->find($id);
-
-        $avatar = $user->getUserAvatarHistories();
+        $list = $this->avatarHistoryRepository->findBy(['user' => $user]);
 
         $data = [];
-        foreach ($avatar as $item) {
+        foreach ($list as $item) {
             if ($item->isDeleted()) continue;
-            array_push($data, $this->serializer->normalize($item, 'json', $item->filterHidden()));
+            array_push($data, $this->serializer->normalize($item, 'json', [AbstractNormalizer::ATTRIBUTES => $item->getNormal()]));
         }
 
         throw new Success(['data' => $data]);

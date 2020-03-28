@@ -27,5 +27,22 @@ class Base
 
     protected $trust = [];
     protected $hidden = [];
+    protected $normal = [];
     protected $deleteField = ['deletedAt', 'deleted'];
+
+    /**
+     * @return array
+     */
+    public function getDeleteField (): array
+    {
+        return $this->deleteField;
+    }
+
+    /**
+     * @return array
+     */
+    public function getNormal (): array
+    {
+        return $this->normal;
+    }
 }
