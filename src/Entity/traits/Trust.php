@@ -32,7 +32,7 @@ trait Trust
      */
     public function setTrustFields (array $data)
     {
-        if (!count($data)) return;
+        if (empty($data)) return;
 
         foreach ($this->getTrust() as $item) {
             if (array_key_exists($item, $data)) {

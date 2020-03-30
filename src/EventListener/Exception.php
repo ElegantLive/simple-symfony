@@ -9,10 +9,13 @@
 namespace App\EventListener;
 
 use App\Exception\Base;
+use App\Exception\Miss;
 use App\Message\ExceptionNotification;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpKernel\Event\ExceptionEvent;
+use Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Messenger\MessageBusInterface;
 
 /**
@@ -50,6 +53,16 @@ class Exception
      * @var string
      */
     private $message = '服务器异常';
+
+    /**
+     * @var string
+     */
+    private $routingMissMessage = 'routing miss';
+
+    /**
+     * @var int
+     */
+    private $routingMissErrorCode = 998;
 
     /**
      * @var array
@@ -163,6 +176,22 @@ class Exception
     }
 
     /**
+     * @return string
+     */
+    public function getRoutingMissMessage (): string
+    {
+        return $this->routingMissMessage;
+    }
+
+    /**
+     * @return int
+     */
+    public function getRoutingMissErrorCode (): int
+    {
+        return $this->routingMissErrorCode;
+    }
+
+    /**
      * @param ExceptionEvent $event
      * @return ExceptionEvent
      */
@@ -170,6 +199,15 @@ class Exception
     {
         $this->setEvent($event);
         $exception = $event->getException();
+
+        if ($exception instanceof NotFoundHttpException ||
+            $exception instanceof MethodNotAllowedHttpException) {
+            $exception = new Miss([
+                'message' => $this->getRoutingMissMessage(),
+                'errorCode' => $this->getRoutingMissErrorCode()
+            ]);
+        }
+
         if ($exception instanceof Base) {
             $this->setData($exception->getData());
             $this->setMessage($exception->getMessage());
@@ -184,13 +222,13 @@ class Exception
 
         $event->setResponse($this->createJsonResponse());
 
-        // logger error message or other...
-        $this->logger->error($exception->getMessage(), [
-            'file'  => $exception->getFile(),
-            'line'  => $exception->getLine(),
-            'trace' => $exception->getTrace()
+        // logger error message or other ...
+        $this->logger->error($event->getException()->getMessage(), [
+            'file'  => $event->getException()->getFile(),
+            'line'  => $event->getException()->getLine(),
+            'trace' => $event->getException()->getTrace()
         ]);
-        $this->bus->dispatch(new ExceptionNotification($event->getRequest(), $exception, [
+        $this->bus->dispatch(new ExceptionNotification($event->getRequest(), $event->getException(), [
             'sender'   => $this->from,
             'receiver' => $this->dev
         ]));
