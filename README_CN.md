@@ -1,4 +1,4 @@
-# learn-symfony
+# simple-symfony-blog
 
 这是一个使用 `symfony@4.3` 构建简单的博客api。
 

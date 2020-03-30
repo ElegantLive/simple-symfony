@@ -1,4 +1,4 @@
-# Learn-symfony.
+# simple-symfony-blog
 A simple blog api build with `symfony@4.3`.
 
 Forgive my pool English. 
