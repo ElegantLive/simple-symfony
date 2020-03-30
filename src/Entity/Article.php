@@ -20,6 +20,8 @@ class Article extends Base
     protected $hidden = ['user'];
     protected $trust  = ['title', 'content', 'description'];
 
+    protected $normal = ['id', 'title', 'description', 'content', 'favorite', 'createdAt', 'likeCount', 'disLikeCount', 'commentCount'];
+
     const VIEW = 'viewCount';
     const TIME = 'createdAt';
 

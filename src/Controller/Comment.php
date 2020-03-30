@@ -12,6 +12,7 @@ namespace App\Controller;
 use App\Entity\Base;
 use App\Entity\Comment as CommentEntity;
 use App\Entity\ThirdRelation;
+use App\Exception\Forbidden;
 use App\Exception\Gone;
 use App\Exception\Miss;
 use App\Exception\Parameter;
@@ -31,6 +32,7 @@ use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\Serializer\Normalizer\AbstractNormalizer;
 
 /**
+ * @Route("/article/{id}/comment")
  * Class Comment
  * @package App\Controller
  */
@@ -86,7 +88,7 @@ class Comment extends AbstractController
     }
 
     /**
-     * @Route("/article/{id}/comment", methods={"GET"}, name="getCommentsByArticle")
+     * @Route("/", methods={"GET"}, name="getCommentsByArticle")
      * @param Request $request
      * @param Token   $token
      * @param int     $id
@@ -97,7 +99,7 @@ class Comment extends AbstractController
      * @throws \Psr\Cache\InvalidArgumentException
      * @throws \Exception
      */
-    public function getList (Request $request,
+    public function getPager (Request $request,
                              Token $token,
                              int $id,
                              $page,
@@ -129,7 +131,7 @@ class Comment extends AbstractController
         if ($article->isDeleted()) throw new Gone();
 
         $offset = ($page - 1) * $size;
-        $max    = $offset + $size;
+        $max    = $size;
 
         $qb = $this->commentRepository->createQueryBuilder('t');
 
@@ -170,7 +172,7 @@ class Comment extends AbstractController
     }
 
     /**
-     * @Route("/article/{id}/comment", methods={"POST"}, name="newCommentForArticle")
+     * @Route("/", methods={"POST"}, name="newCommentForArticle")
      * @param Token   $token
      * @param Request $request
      * @param int     $id
@@ -200,6 +202,37 @@ class Comment extends AbstractController
         $this->entityManager->persist($comment);
 
         $article->setCommentCount(bcadd($article->getCommentCount(), 1));
+        $this->entityManager->flush();
+
+        throw new Success();
+    }
+
+    /**
+     * @Route("/{commentId}", methods={"DELETE"}, name="deleteArticleComment")
+     * @param Token $token
+     * @param int   $articleId
+     * @param int   $commentId
+     * @throws \Psr\Cache\InvalidArgumentException
+     */
+    public function disable (Token $token, int $articleId, int $commentId)
+    {
+        $user = $token->getCurrentUser();
+
+        $comment = $this->commentRepository->find($commentId);
+        if (empty($comment)) throw new Miss();
+        if ($comment->isDeleted()) throw new Gone();
+
+        $article = $comment->getArticle();
+        if (empty($article)) throw new Miss();
+        if ($article->isDeleted()) throw new Gone();
+        if ($article->getId() !== (int) $articleId) throw new Forbidden();
+
+        $author = $article->getUser();
+
+        $commenter = $comment->getUser();
+        if ($commenter !== $user || $author !== $user) throw new Forbidden();
+
+        $this->entityManager->remove($comment);
         $this->entityManager->flush();
 
         throw new Success();

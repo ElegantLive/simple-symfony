@@ -133,7 +133,11 @@ class User extends AbstractController
         if (empty($user)) throw new Miss();
         if ($user->isDeleted()) throw new Gone();
 
-        throw new Success(['data' => $this->serializer->normalize($user, 'json', $user->filterHidden())]);
+        throw new Success([
+            'data' => $this->serializer->normalize($user, 'json', [
+                AbstractNormalizer::ATTRIBUTES => $user->getNormal()
+            ])
+        ]);
     }
 
     /**

@@ -27,7 +27,7 @@ class Comment extends Base
 
     protected $hidden = ['article'];
 
-    protected $normal = ['id', 'content', 'likeCount', 'disLikeCount', 'createdAt', 'updatedAt'];
+    protected $normal = ['id', 'content', 'likeCount', 'disLikeCount', 'replyCount', 'createdAt', 'updatedAt'];
 
     /**
      * @ORM\Id()
@@ -41,12 +41,6 @@ class Comment extends Base
      * @ORM\JoinColumn(nullable=false)
      */
     private $article;
-
-    /**
-     * @ORM\OneToOne(targetEntity="App\Entity\User", cascade={"persist", "remove"})
-     * @ORM\JoinColumn(nullable=false)
-     */
-    private $user;
 
     /**
      * @ORM\Column(type="text")
@@ -65,6 +59,17 @@ class Comment extends Base
      */
     private $disLikeCount = 0;
 
+    /**
+     * @ORM\Column(type="integer")
+     */
+    private $replyCount = 0;
+
+    /**
+     * @ORM\ManyToOne(targetEntity="App\Entity\User")
+     * @ORM\JoinColumn(nullable=false)
+     */
+    private $user;
+
     public function getId (): ?int
     {
         return $this->id;
@@ -78,18 +83,6 @@ class Comment extends Base
     public function setArticle (Article $Article): self
     {
         $this->article = $Article;
-
-        return $this;
-    }
-
-    public function getUser (): ?User
-    {
-        return $this->user;
-    }
-
-    public function setUser (User $user): self
-    {
-        $this->user = $user;
 
         return $this;
     }
@@ -126,6 +119,30 @@ class Comment extends Base
     public function setDisLikeCount (int $disLikeCount): self
     {
         $this->disLikeCount = $disLikeCount;
+
+        return $this;
+    }
+
+    public function getReplyCount(): ?int
+    {
+        return $this->replyCount;
+    }
+
+    public function setReplyCount(int $replyCount): self
+    {
+        $this->replyCount = $replyCount;
+
+        return $this;
+    }
+
+    public function getUser(): ?User
+    {
+        return $this->user;
+    }
+
+    public function setUser(?User $user): self
+    {
+        $this->user = $user;
 
         return $this;
     }

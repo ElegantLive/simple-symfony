@@ -18,6 +18,7 @@ class Tag extends Base
     use SoftDeleteableEntity;
 
     protected $deleteField = ['deletedAt', 'deleted'];
+    protected $normal = ['id', 'name', 'description', 'useCount', 'isHot', 'createdAt'];
 
     /**
      * @ORM\Id()

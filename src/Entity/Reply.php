@@ -17,6 +17,16 @@ class Reply extends Base
     use Timestamps;
     use SoftDeleteableEntity;
 
+    protected $normal = ['id', 'content', 'likeCount', 'disLikeCount', 'createdAt'];
+
+    public static $_byState = [
+        self::LIKE,
+        self::TIME
+    ];
+
+    const TIME = "createdAt";
+    const LIKE = "likeCount";
+
     /**
      * @ORM\Id()
      * @ORM\GeneratedValue()
@@ -30,11 +40,6 @@ class Reply extends Base
     private $content;
 
     /**
-     * @ORM\Column(type="integer", nullable=true)
-     */
-    private $reply;
-
-    /**
      * @ORM\Column(type="integer")
      */
     private $likeCount = 0;
@@ -45,7 +50,18 @@ class Reply extends Base
     private $disLikeCount = 0;
 
     /**
-     * @ORM\OneToOne(targetEntity="App\Entity\User", cascade={"persist", "remove"})
+     * @ORM\ManyToOne(targetEntity="App\Entity\Comment")
+     * @ORM\JoinColumn(nullable=false)
+     */
+    private $comment;
+
+    /**
+     * @ORM\Column(type="integer", nullable=true)
+     */
+    private $reply;
+
+    /**
+     * @ORM\ManyToOne(targetEntity="App\Entity\User")
      * @ORM\JoinColumn(nullable=false)
      */
     private $user;
@@ -63,18 +79,6 @@ class Reply extends Base
     public function setContent(string $content): self
     {
         $this->content = $content;
-
-        return $this;
-    }
-
-    public function getReply(): ?int
-    {
-        return $this->reply;
-    }
-
-    public function setReply(?int $reply): self
-    {
-        $this->reply = $reply;
 
         return $this;
     }
@@ -103,12 +107,36 @@ class Reply extends Base
         return $this;
     }
 
+    public function getComment(): ?Comment
+    {
+        return $this->comment;
+    }
+
+    public function setComment(?Comment $comment): self
+    {
+        $this->comment = $comment;
+
+        return $this;
+    }
+
+    public function getReply(): ?int
+    {
+        return $this->reply;
+    }
+
+    public function setReply(?int $reply): self
+    {
+        $this->reply = $reply;
+
+        return $this;
+    }
+
     public function getUser(): ?User
     {
         return $this->user;
     }
 
-    public function setUser(User $user): self
+    public function setUser(?User $user): self
     {
         $this->user = $user;
 

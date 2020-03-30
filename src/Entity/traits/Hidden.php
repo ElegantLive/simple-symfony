@@ -16,7 +16,7 @@ use Symfony\Component\Serializer\Normalizer\AbstractNormalizer;
  */
 trait Hidden
 {
-    private $_filter = ['hidden', 'trust'];
+    private $_filter = ['hidden', 'trust', 'normal', 'deleteField'];
 
     /**
      * @param $field

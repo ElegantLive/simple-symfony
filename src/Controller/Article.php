@@ -79,7 +79,7 @@ class Article extends AbstractController
     }
 
     /**
-     * @Route("/self/list", methods={"GET"}, name="getSelfArticleList")
+     * @Route("/list/self", methods={"GET"}, name="getSelfArticleList")
      * @param Request $request
      * @param Token   $token
      * @param         $page
@@ -98,7 +98,6 @@ class Article extends AbstractController
     {
         $user = $token->getCurrentUser();
 
-
         $data = compact('page', 'size', 'order', 'by');
 
         $params = $request->request->query->all();
@@ -113,7 +112,7 @@ class Article extends AbstractController
         (new GetArticle())->check($data);
 
         $offset = ($page - 1) * $size;
-        $max    = $offset + $size;
+        $max    = $size;
 
         $qb = $this->articleRepository->createQueryBuilder('t');
 
@@ -128,9 +127,14 @@ class Article extends AbstractController
             ->getQuery()
             ->getResult();
 
-        $results = $preQb->select('count(1) as _c')->getQuery()->getArrayResult();
+        $count = $this->articleRepository->createQueryBuilder('t')
+            ->where("t.user = :userId")
+            ->setParameter('userId', $user->getId())
+            ->select('count(1) as _c')
+            ->getQuery()
+            ->getArrayResult();
 
-        $total = (int)$results[0]['_c'];
+        $total = $count ? (int)$count[0]['_c']: 0;
 
         $pageTotal = ceil($total / $size);
 
@@ -166,7 +170,7 @@ class Article extends AbstractController
      * @throws \Psr\Cache\InvalidArgumentException
      * @throws \Exception
      */
-    public function getArticleList (Request $request,
+    public function getPager (Request $request,
                                     Token $token,
                                     $page,
                                     $size,
@@ -193,7 +197,7 @@ class Article extends AbstractController
         (new GetArticle())->check($data);
 
         $offset = ($page - 1) * $size;
-        $max    = $offset + $size;
+        $max    = $size;
 
         $qb = $this->articleRepository->createQueryBuilder('t');
 
@@ -207,9 +211,14 @@ class Article extends AbstractController
             ->getQuery()
             ->getResult();
 
-        $allRecords = $preQb->getQuery()->getArrayResult();
+        $count = $this->articleRepository->createQueryBuilder('t')
+            ->where("t.user = :userId")
+            ->setParameter('userId', $user->getId())
+            ->select('count(1) as _c')
+            ->getQuery()
+            ->getArrayResult();
 
-        $total = count($allRecords);
+        $total = $count ? (int)$count[0]['_c']: 0;
 
         $pageTotal = ceil($total / $size);
 
@@ -314,13 +323,16 @@ class Article extends AbstractController
             if ($createArray) {
                 // create tag
                 foreach ($createArray as $item) {
-                    $tagItem = new Tag();
+                    $tagItem = $this->tagRepository->findOneBy(['name' => $item]);
+                    if (empty($tagItem)) {
+                        $tagItem = new Tag();
 
-                    $tagItem->setName($item);
-                    $tagItem->setDescription($item);
+                        $tagItem->setName($item);
+                        $tagItem->setDescription($item);
 
-                    $this->entityManager->persist($tagItem);
-                    $this->entityManager->flush();
+                        $this->entityManager->persist($tagItem);
+                        $this->entityManager->flush();
+                    }
                     array_push($checkArray, $tagItem->getId());
                     $this->entityManager->clear(Tag::class);
                 }
@@ -348,6 +360,124 @@ class Article extends AbstractController
                 $this->entityManager->flush();
                 $this->entityManager->clear(ThirdRelation::class);
             }
+
+            $tags = $this->tagRepository->findBy(['id' => $checkArray]);
+            foreach ($tags as $tag) {
+                $tag->setUseCount(bcadd($tag->getUseCount(), 1));
+            }
+            $this->entityManager->flush();
+
+            $this->entityManager->commit();
+        } catch (\Exception $exception) {
+            $this->entityManager->rollback();
+            throw $exception;
+        }
+
+        throw new Success();
+    }
+
+    /**
+     * @Route("/{id}", methods={"PUT"}, name="updateArticle")
+     * @param Token   $token
+     * @param Request $request
+     * @param int     $id
+     * @throws \Psr\Cache\InvalidArgumentException
+     * @throws \Exception
+     */
+    public function update (Token $token, Request $request, int $id)
+    {
+        $user = $token->getCurrentUser();
+
+        $data = $request->getData();
+
+        (new CreateArticle())->check($data);
+
+        $article = $this->articleRepository->find($id);
+        if (empty($article)) throw new Miss();
+        if ($article->isDeleted()) throw new Gone();
+
+        $author = $article->getUser();
+        if ($user !== $author) throw new Forbidden();
+
+        $checkIdArray  = [];
+        $stringArray = [];
+        if ($data['tag']) {
+            foreach ($data['tag'] as $tag) {
+                if (is_int($tag)) {
+                    array_push($checkIdArray, $tag);
+                } else {
+                    array_push($stringArray, $tag);
+                }
+            }
+            $checkIdArray = array_unique($checkIdArray);
+            $checkIdArray = array_values($checkIdArray);
+
+            $checkIds = implode(',', $checkIdArray);
+
+            $tags = $this->tagRepository->findBy(['id' => $checkIds]);
+            if (count($tags) !== count($checkIdArray)) throw new Parameter(['message' => '分类丢失']);
+        }
+
+
+        $this->entityManager->beginTransaction();
+        try {
+            $map = [
+                'relate' => ThirdRelation::ARTICLE_TAGS,
+                'first' => $article->getId()
+            ];
+            $oldTags = $this->thirdRelationRepository->findBy($map);
+
+            foreach ($oldTags as $oldTag) {
+                $backTag = $this->tagRepository->find($oldTag->getSecond());
+                $backTag->setUseCount(bcsub($backTag->getUseCount(), 1));
+                $this->entityManager->remove($oldTag);
+            }
+
+            if ($oldTags) $this->entityManager->flush();
+
+            if ($stringArray) {
+                // create tag
+                foreach ($stringArray as $item) {
+                    $tagItem = $this->tagRepository->findOneBy(['name' => $item]);
+                    if (empty($tagItem)) {
+                        $tagItem = new Tag();
+
+                        $tagItem->setName($item);
+                        $tagItem->setDescription($item);
+
+                        $this->entityManager->persist($tagItem);
+                        $this->entityManager->flush();
+                    }
+                    if (in_array($tagItem->getId(), $checkIdArray) === false) array_push($checkIdArray, $tagItem->getId());
+                    $this->entityManager->clear(Tag::class);
+                }
+            }
+
+            $article->setTrustFields($data);
+            if (empty($article->getDescription())) {
+                $description = substr($article->getContent(), 0, 25) . '...';
+                $article->setDescription($description);
+            }
+
+            $this->entityManager->flush();
+
+            foreach ($checkIdArray as $tagId) {
+                $articleTag = new ThirdRelation();
+
+                $articleTag->setRelate($articleTag::ARTICLE_TAGS);
+                $articleTag->setFirst($article->getId());
+                $articleTag->setSecond($tagId);
+
+                $this->entityManager->persist($articleTag);
+                $this->entityManager->flush();
+                $this->entityManager->clear(ThirdRelation::class);
+            }
+
+            $tags = $this->tagRepository->findBy(['id' => $checkIdArray]);
+            foreach ($tags as $tag) {
+                $tag->setUseCount(bcadd($tag->getUseCount(), 1));
+            }
+            $this->entityManager->flush();
 
             $this->entityManager->commit();
         } catch (\Exception $exception) {
