@@ -29,7 +29,8 @@
         "twig/cssinliner-extra": "^3.0",
         "twig/extra-bundle": "^3.0",
         "ext-json": "*",
-        "ext-bcmath": "*"
+        "ext-bcmath": "*",
+        "ext-openssl": "*"
     },
     "require-dev": {
         "symfony/maker-bundle": "^1.13",

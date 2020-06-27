@@ -39,11 +39,10 @@ class Token extends AbstractController
 
     /**
      * @param TokenService $token
-     * @throws \Psr\Cache\InvalidArgumentException
      */
     public function logout (TokenService $token)
     {
-        $token->cleanToken();
+//        $token->cleanToken();
 
         throw new Success();
     }

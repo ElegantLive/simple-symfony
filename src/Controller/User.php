@@ -27,6 +27,8 @@ use App\Validator\ChangePassword;
 use App\Validator\Register;
 use App\Validator\SetAvatar;
 use Doctrine\ORM\EntityManagerInterface;
+use Exception;
+use Psr\Cache\InvalidArgumentException;
 use Stof\DoctrineExtensionsBundle\Uploadable\UploadableManager;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Messenger\MessageBusInterface;
@@ -95,7 +97,7 @@ class User extends AbstractController
     /**
      * @Route("/register", methods={"POST"}, name="userRegister")
      * @param Request $request
-     * @throws \Exception
+     * @throws Exception
      */
     public function register (Request $request)
     {
@@ -143,7 +145,6 @@ class User extends AbstractController
     /**
      * @Route("/self", methods={"GET"}, name="getSelfInfo")
      * @param Token $token
-     * @throws \Psr\Cache\InvalidArgumentException
      */
     public function getSelf (Token $token)
     {
@@ -156,7 +157,6 @@ class User extends AbstractController
      * @Route("/", methods={"PATCH"}, name="updateUser")
      * @param Token   $token
      * @param Request $request
-     * @throws \Psr\Cache\InvalidArgumentException
      */
     public function update (Token $token, Request $request)
     {
@@ -177,7 +177,7 @@ class User extends AbstractController
     /**
      * @Route("/password/code", methods={"GET"}, name="changePasswordCode")
      * @param Token $token
-     * @throws \Psr\Cache\InvalidArgumentException
+     * @throws InvalidArgumentException
      */
     public function changePasswordCode (Token $token)
     {
@@ -191,8 +191,8 @@ class User extends AbstractController
      * @Route("/password", methods={"PATCH"}, name="changePassword")
      * @param Token   $token
      * @param Request $request
-     * @throws \Psr\Cache\InvalidArgumentException
-     * @throws \Exception
+     * @throws InvalidArgumentException
+     * @throws Exception
      */
     public function password (Token $token, Request $request)
     {
@@ -217,7 +217,7 @@ class User extends AbstractController
     /**
      * @Route("/", methods={"DELETE"}, name="deleteUser")
      * @param Token $token
-     * @throws \Psr\Cache\InvalidArgumentException
+     * @throws InvalidArgumentException
      */
     public function disable (Token $token)
     {
@@ -239,8 +239,7 @@ class User extends AbstractController
      * @param Token             $token
      * @param Request           $request
      * @param UploadableManager $uploadableManager
-     * @throws \Psr\Cache\InvalidArgumentException
-     * @throws \Exception
+     * @throws Exception
      */
     public function setAvatarByUpload (Token $token, Request $request, UploadableManager $uploadableManager)
     {
@@ -275,7 +274,7 @@ class User extends AbstractController
             $this->entityManager->flush();
 
             $this->entityManager->commit();
-        } catch (\Exception $exception) {
+        } catch (Exception $exception) {
             $this->entityManager->rollback();
             throw $exception;
         }
@@ -286,8 +285,7 @@ class User extends AbstractController
      * @Route("/avatar/history", methods={"PUT"}, name="setAvatarByHistory", )
      * @param Token   $token
      * @param Request $request
-     * @throws \Psr\Cache\InvalidArgumentException
-     * @throws \Exception
+     * @throws Exception
      */
     public function setAvatarByHistory (Token $token, Request $request)
     {
@@ -312,7 +310,7 @@ class User extends AbstractController
             $this->entityManager->flush();
 
             $this->entityManager->commit();
-        } catch (\Exception $exception) {
+        } catch (Exception $exception) {
             $this->entityManager->rollback();
             throw $exception;
         }
@@ -323,7 +321,6 @@ class User extends AbstractController
     /**
      * @Route("/avatar/history", methods={"GET"}, name="getAvatarHistory")
      * @param Token $token
-     * @throws \Psr\Cache\InvalidArgumentException
      */
     public function avatarHistory (Token $token)
     {

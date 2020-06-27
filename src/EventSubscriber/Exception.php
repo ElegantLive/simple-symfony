@@ -208,7 +208,7 @@ class Exception implements EventSubscriberInterface
         $exception = $event->getException();
 
         if ($exception instanceof NotFoundHttpException ||
-        $exception instanceof MethodNotAllowedHttpException) {
+            $exception instanceof MethodNotAllowedHttpException) {
             $exception = new Miss([
                 'message' => $this->getRoutingMissMessage(),
                 'errorCode' => $this->getRoutingMissErrorCode()

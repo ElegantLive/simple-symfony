@@ -55,15 +55,27 @@ services:
             $from: '%env(FROM_EMAIL)%'
             $dev: '%env(DEV_EMAIL)%'
 
+    App\EventListener\Request:
+        tags:
+            - { name: kernel.event_listener, event: kernel.request }
+        arguments:
+            $env: '%env(APP_ENV)%'
+
     Symfony\Bundle\TwigBundle\Controller\ExceptionController: '@twig.controller.exception'
 
     App\Service\VerificationCode:
         arguments:
             $from: '%env(FROM_EMAIL)%'
 
+    App\Service\Signature:
+        arguments:
+            $public: '%sign.public%'
+            $private: '%sign.private%'
+            $timeout: 7000
+
     App\Service\Token:
         arguments:
             $public: '%jwt.public%'
             $private: '%jwt.private%'
             $type: 'RS256'
-            $expire: 100
+            $expire: 86400

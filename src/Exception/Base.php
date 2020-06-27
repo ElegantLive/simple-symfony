@@ -54,10 +54,17 @@ class Base extends HttpException
      * @param int             $statusCode
      * @param \Throwable|null $previous
      */
-    public function __construct (array $errorData = [], int $statusCode = 0, \Throwable $previous = null)
+    public function __construct ($errorData = [], int $statusCode = 0, \Throwable $previous = null)
     {
-        foreach ($this->accessKey as $key => $value) {
-            if (empty($errorData[$value]) == false) $this->$value = $errorData[$value];
+        if (is_array ($errorData)) {
+            foreach ($this->accessKey as $key => $value) {
+                if (empty($errorData[$value]) == false) $this->$value = $errorData[$value];
+            }
+        }
+
+        // 抛出成功异常，需要修改提示和返回数据的时候使用
+        if (is_string($errorData)) {
+            $this->message = $errorData;
         }
 
         if ($statusCode) $this->setStatus($statusCode);

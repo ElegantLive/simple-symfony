@@ -14,6 +14,6 @@ use Symfony\Component\HttpFoundation\Response;
 class Locked extends Base
 {
     protected $status    = Response::HTTP_LOCKED;
-    protected $errorCode = '10006';
+    protected $errorCode = 10006;
     protected $message   = 'locked';
 }

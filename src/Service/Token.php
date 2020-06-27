@@ -98,11 +98,19 @@ class Token
         $this->expire           = $expire;
     }
 
+    /**
+     * @param bool $decode
+     * @return string|string[]
+     */
     private function getType ($decode = false)
     {
         return $decode ? [$this->type] : $this->type;
     }
 
+    /**
+     * @param bool $decode
+     * @return false|string
+     */
     private function getPem ($decode = false)
     {
         $pem = $decode ? $this->publicPem : $this->privatePem;
@@ -112,21 +120,21 @@ class Token
 //        return $decode ? openssl_get_privatekey($file): openssl_get_publickey($file);
     }
 
-    /**
-     * @return AdapterInterface
-     */
-    private function getCache ()
-    {
-        return $this->cache;
-    }
-
-    /**
-     * @throws InvalidArgumentExceptionAlias
-     */
-    public function cleanToken ()
-    {
-        self::getCache()->deleteItem(self::getTokenFromRequest());
-    }
+//    /**
+//     * @return AdapterInterface
+//     */
+//    private function getCache ()
+//    {
+//        return $this->cache;
+//    }
+//
+//    /**
+//     * @throws InvalidArgumentExceptionAlias
+//     */
+//    public function cleanToken ()
+//    {
+//        self::getCache()->deleteItem(self::getTokenFromRequest());
+//    }
 
     /**
      * @param array $var
@@ -213,7 +221,7 @@ class Token
             $exception = [
                 'message'   => $expire ? 'token已过期' : 'token已失效',
                 'code'      => 401,
-                'errorCode' => $expire ? 10002 : 10003
+                'errorCode' => $expire ? 10008 : 10001
             ];
             throw new TokenException($exception);
 //            throw $throwable; // 调试使用

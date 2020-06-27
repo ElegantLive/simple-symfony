@@ -14,6 +14,6 @@ use Symfony\Component\HttpFoundation\Response;
 class Miss extends Base
 {
     protected $status    = Response::HTTP_NOT_FOUND;
-    protected $errorCode = '10002';
+    protected $errorCode = 10002;
     protected $message   = 'missing';
 }
