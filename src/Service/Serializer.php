@@ -16,6 +16,7 @@ use Symfony\Component\Serializer\Serializer as BaseSerializer;
 
 /**
  * Class Serializer
+ * @method array normalize($data, $format = null, array $context = [])
  * @package App\Service
  */
 class Serializer

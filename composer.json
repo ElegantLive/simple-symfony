@@ -6,6 +6,7 @@
         "ext-ctype": "*",
         "ext-iconv": "*",
         "antishov/doctrine-extensions-bundle": "^1.4",
+        "firebase/php-jwt": "^5.2",
         "fzaninotto/faker": "^1.8",
         "nelmio/cors-bundle": "^1.5",
         "predis/predis": "^1.1",
@@ -26,7 +27,9 @@
         "symfony/validator": "4.3.*",
         "symfony/yaml": "4.3.*",
         "twig/cssinliner-extra": "^3.0",
-        "twig/extra-bundle": "^3.0"
+        "twig/extra-bundle": "^3.0",
+        "ext-json": "*",
+        "ext-bcmath": "*"
     },
     "require-dev": {
         "symfony/maker-bundle": "^1.13",

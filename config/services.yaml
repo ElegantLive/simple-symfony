@@ -6,6 +6,12 @@
 parameters:
     page.page: 1
     page.size: 15
+    # for JWT
+    jwt.private: '/config/certificate/jwt/rsa_private.pem'
+    jwt.public: '/config/certificate/jwt/rsa_public.pem'
+    # for sign with request
+    sign.private: '/config/certificate/sign/rsa_private.pem'
+    sign.public: '/config/certificate/sign/rsa_public.pem'
 
 services:
     # default configuration for services in *this* file
@@ -13,9 +19,9 @@ services:
         autowire: true      # Automatically injects dependencies in your services.
         autoconfigure: true # Automatically registers your services as commands, event subscribers, etc._defaults:
         bind:
-            $from: '%env(FROM_EMAIL)%'
             $page: '%page.page%'
             $size: '%page.size%'
+            $projectDirectory: "%kernel.project_dir%"
 
     # makes classes in src/ available to be used as services
     # this creates a service per class whose id is the fully-qualified class name
@@ -50,3 +56,14 @@ services:
             $dev: '%env(DEV_EMAIL)%'
 
     Symfony\Bundle\TwigBundle\Controller\ExceptionController: '@twig.controller.exception'
+
+    App\Service\VerificationCode:
+        arguments:
+            $from: '%env(FROM_EMAIL)%'
+
+    App\Service\Token:
+        arguments:
+            $public: '%jwt.public%'
+            $private: '%jwt.private%'
+            $type: 'RS256'
+            $expire: 100

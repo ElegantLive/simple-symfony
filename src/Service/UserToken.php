@@ -48,7 +48,6 @@ class UserToken
     /**
      * @param array $data
      * @return string
-     * @throws \Psr\Cache\InvalidArgumentException
      */
     public function getToken (array $data)
     {
@@ -61,6 +60,7 @@ class UserToken
             throw new TokenException(['message' => '密码错误']);
         }
 
-        return $this->token->generate(['id' => $user->getId()]);
+//        return $this->token->generate(['id' => $user->getId()]); // cache token
+        return $this->token->generateToken(['id' => $user->getId()]);
     }
 }

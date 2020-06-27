@@ -83,8 +83,11 @@ class Exception
 
     /**
      * ExceptionListener constructor.
-     * @param                 $env
-     * @param LoggerInterface $logger
+     * @param                     $env
+     * @param                     $from
+     * @param                     $dev
+     * @param LoggerInterface     $logger
+     * @param MessageBusInterface $bus
      */
     public function __construct ($env, $from, $dev, LoggerInterface $logger, MessageBusInterface $bus)
     {

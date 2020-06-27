@@ -89,7 +89,6 @@ class Reply extends AbstractController
      * @param         $size
      * @param string  $order
      * @param string  $by
-     * @throws \Psr\Cache\InvalidArgumentException
      * @throws \Exception
      */
     public function getPager (Request $request,
@@ -115,7 +114,7 @@ class Reply extends AbstractController
             if (array_key_exists($array_key, $params) === false) continue;
             if (in_array($array_key, ['page', 'size'])) $params[$array_key] = (int)$params[$array_key];
 
-            $$array_key       = $params[$array_key];
+            $array_key       = $params[$array_key];
             $data[$array_key] = $params[$array_key];
         }
 
@@ -203,7 +202,6 @@ class Reply extends AbstractController
 //     * @param Request $request
 //     * @param int     $articleId
 //     * @param int     $commentId
-//     * @throws \Psr\Cache\InvalidArgumentException
 //     * @throws \Exception
 //     */
 //    public function replyComment (Token $token, Request $request, int $articleId, int $commentId)
@@ -244,7 +242,6 @@ class Reply extends AbstractController
      * @param int     $articleId
      * @param int     $commentId
      * @param int     $replyId
-     * @throws \Psr\Cache\InvalidArgumentException
      * @throws \Exception
      */
     public function replyReply (Token $token, Request $request, int $articleId, int $commentId, int $replyId = 0)
@@ -292,7 +289,6 @@ class Reply extends AbstractController
      * @param int   $articleId
      * @param int   $commentId
      * @param int   $replyId
-     * @throws \Psr\Cache\InvalidArgumentException
      */
     public function disable (Token $token, int $articleId, int $commentId, int $replyId)
     {

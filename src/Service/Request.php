@@ -20,21 +20,18 @@ class Request
      * @var
      */
     protected $payload;
+
     /**
      * @var RequestBase
      */
     public $request;
-    /**
-     * @var Serializer
-     */
-    private $serializer;
 
     /**
      * Request constructor.
      */
     public function __construct ()
     {
-        $this->request    = RequestBase::createFromGlobals();
+        $this->request = RequestBase::createFromGlobals();
         self::initPayload();
     }
 

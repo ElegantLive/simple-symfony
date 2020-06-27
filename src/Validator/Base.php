@@ -86,7 +86,7 @@ abstract class Base
 
     /**
      * @param array $input
-     * @throws \Exception
+     * @throws Exception
      */
     public function check (array $input)
     {

@@ -12,6 +12,7 @@ namespace App\Controller;
 use App\Entity\Base;
 use App\Entity\Comment as CommentEntity;
 use App\Entity\ThirdRelation;
+use App\Entity\User;
 use App\Exception\Forbidden;
 use App\Exception\Gone;
 use App\Exception\Miss;
@@ -96,7 +97,6 @@ class Comment extends AbstractController
      * @param         $size
      * @param string  $order
      * @param string  $by
-     * @throws \Psr\Cache\InvalidArgumentException
      * @throws \Exception
      */
     public function getPager (Request $request,
@@ -107,9 +107,10 @@ class Comment extends AbstractController
                              $order = Base::ORDER_DESC,
                              $by = CommentEntity::TIME)
     {
-        $user = null;
+        $currentUser = null;
+        $user = new User();
         try {
-            $user = $token->getCurrentUser();
+            $currentUser = $token->getCurrentUser();
         } catch (\Exception $exception) {
         }
 
@@ -155,9 +156,11 @@ class Comment extends AbstractController
 
         $list = [];
 
-        array_map(function (CommentEntity $comment) use ($user, &$list) {
+        array_map(function (CommentEntity $comment) use ($user, $currentUser, &$list) {
             $filter = $comment->isDeleted() ? $comment->getDeleteField() : $comment->getNormal();
-            if ($comment->isDeleted() === false) $filter['user'] = $user->getNormal();
+            if ($comment->isDeleted() === false) {
+                $filter['user'] = $user->getNormal();
+            }
 
             $listItem = $this->serializer->normalize($comment, 'json', [AbstractNormalizer::ATTRIBUTES => $filter]);
 
@@ -176,7 +179,6 @@ class Comment extends AbstractController
      * @param Token   $token
      * @param Request $request
      * @param int     $id
-     * @throws \Psr\Cache\InvalidArgumentException
      * @throws \Exception
      */
     public function add (Token $token, Request $request, int $id)
@@ -212,7 +214,6 @@ class Comment extends AbstractController
      * @param Token $token
      * @param int   $articleId
      * @param int   $commentId
-     * @throws \Psr\Cache\InvalidArgumentException
      */
     public function disable (Token $token, int $articleId, int $commentId)
     {

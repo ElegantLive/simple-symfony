@@ -86,7 +86,6 @@ class Article extends AbstractController
      * @param         $size
      * @param string  $order
      * @param string  $by
-     * @throws \Psr\Cache\InvalidArgumentException
      * @throws \Exception
      */
     public function getSelfArticle (Request $request,
@@ -167,7 +166,6 @@ class Article extends AbstractController
      * @param         $size
      * @param string  $order
      * @param string  $by
-     * @throws \Psr\Cache\InvalidArgumentException
      * @throws \Exception
      */
     public function getPager (Request $request,
@@ -177,9 +175,9 @@ class Article extends AbstractController
                                     $order = Base::ORDER_DESC,
                                     $by = ArticleEntity::TIME)
     {
-        $user = null;
+        $currentUser = null;
         try {
-            $user = $token->getCurrentUser();
+            $currentUser = $token->getCurrentUser();
         } catch (\Exception $exception) {
         }
 
@@ -213,7 +211,7 @@ class Article extends AbstractController
 
         $count = $this->articleRepository->createQueryBuilder('t')
             ->where("t.user = :userId")
-            ->setParameter('userId', $user->getId())
+            ->setParameter('userId', $currentUser->getId())
             ->select('count(1) as _c')
             ->getQuery()
             ->getArrayResult();
@@ -224,14 +222,14 @@ class Article extends AbstractController
 
         $list = [];
 
-        array_map(function (ArticleEntity $article) use ($user, &$list) {
+        array_map(function (ArticleEntity $article) use ($currentUser, &$list) {
             $listItem = $this->serializer->normalize($article, 'json', $article->filterHidden());
 
             $listItem['tag'] = $this->thirdRelationRepository->suppleTagsToArticle($this->tagRepository, $article->getId());
 
-            if ($user) {
-                $listItem['isLike']    = $this->thirdRelationRepository->suppleExist(ThirdRelation::ARTICLE_LIKES, $user->getId(), $article->getId());
-                $listItem['isDisLike'] = $this->thirdRelationRepository->suppleExist(ThirdRelation::ARTICLE_DISLIKES, $user->getId(), $article->getId());
+            if ($currentUser) {
+                $listItem['isLike']    = $this->thirdRelationRepository->suppleExist(ThirdRelation::ARTICLE_LIKES, $currentUser->getId(), $article->getId());
+                $listItem['isDisLike'] = $this->thirdRelationRepository->suppleExist(ThirdRelation::ARTICLE_DISLIKES, $currentUser->getId(), $article->getId());
             }
             array_push($list, $listItem);
         }, $articles);
@@ -243,7 +241,6 @@ class Article extends AbstractController
      * @Route("/{id}", methods={"GET"}, name="articleDetail")
      * @param Token $token
      * @param int   $id
-     * @throws \Psr\Cache\InvalidArgumentException
      * @throws \Exception
      */
     public function detail (Token $token, int $id)
@@ -284,7 +281,6 @@ class Article extends AbstractController
      * @Route("/", methods={"POST"}, name="createArticle")
      * @param Token   $token
      * @param Request $request
-     * @throws \Psr\Cache\InvalidArgumentException
      * @throws \Exception
      */
     public function create (Token $token, Request $request)
@@ -381,7 +377,6 @@ class Article extends AbstractController
      * @param Token   $token
      * @param Request $request
      * @param int     $id
-     * @throws \Psr\Cache\InvalidArgumentException
      * @throws \Exception
      */
     public function update (Token $token, Request $request, int $id)
@@ -492,7 +487,6 @@ class Article extends AbstractController
      * @Route("/{id}", methods={"DELETE"}, name="deleteArticle")
      * @param Token $token
      * @param int   $id
-     * @throws \Psr\Cache\InvalidArgumentException
      */
     public function delete (Token $token, int $id)
     {
