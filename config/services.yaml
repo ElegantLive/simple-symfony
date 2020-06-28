@@ -72,6 +72,7 @@ services:
             $public: '%sign.public%'
             $private: '%sign.private%'
             $timeout: 7000
+            $onceExpire: 60
 
     App\Service\Token:
         arguments:

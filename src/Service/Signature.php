@@ -4,6 +4,8 @@
 namespace App\Service;
 
 use App\Exception\Signature as SignatureException;
+use Psr\Cache\InvalidArgumentException;
+use Symfony\Component\Cache\Adapter\AdapterInterface;
 
 /**
  * request signature
@@ -34,27 +36,41 @@ class Signature
      * @var int
      */
     private $timeout;
+    /**
+     * @var AdapterInterface
+     */
+    private $cache;
+    /**
+     * @var int
+     */
+    private $onceExpire;
 
     /**
      * Signature constructor.
      *
-     * @param Request $request
-     * @param string  $public
-     * @param string  $private
-     * @param string  $projectDirectory
-     * @param int     $timeout
+     * @param Request          $request
+     * @param AdapterInterface $cache
+     * @param string           $public
+     * @param string           $private
+     * @param string           $projectDirectory
+     * @param int              $timeout
+     * @param int              $onceExpire
      */
     public function __construct(Request $request,
+                                AdapterInterface $cache,
                                 string $public,
                                 string $private,
                                 string $projectDirectory,
-                                int $timeout)
+                                int $timeout,
+int $onceExpire)
     {
         $this->request          = $request;
         $this->publicPem        = $public;
         $this->privatePem       = $private;
         $this->projectDirectory = $projectDirectory;
         $this->timeout          = $timeout;
+        $this->cache = $cache;
+        $this->onceExpire = $onceExpire;
     }
 
     /**
@@ -84,7 +100,7 @@ class Signature
 
         $url      = $request->headers->get ('url');
         $time     = time ();
-        $once     = rand (100000, 999999);
+        $once     = (microtime (true) * 10000) . '273jikO9';
         $platform = $request->headers->get ('platform');
 
         $params             = $this->request->getData ();
@@ -105,6 +121,7 @@ class Signature
     /**
      * @return void
      * @throws SignatureException
+     * @throws InvalidArgumentException
      */
     public function checkSign()
     {
@@ -112,17 +129,13 @@ class Signature
 
         $url      = $request->getPathInfo ();
         $sign     = $request->headers->get ('signature');
-        $once     = $request->headers->get ('once');
-        $time     = $request->headers->get ('time');
+        $once     = (int) $request->headers->get ('once');
+        $time     = (int) $request->headers->get ('time');
         $platform = $request->headers->get ('platform');
 
         if (empty($time) || empty($once) || empty($sign)) {
             // signature miss
             throw new SignatureException('signature miss');
-        }
-
-        if ($once < 100000 || $once > 999999) {
-            throw new SignatureException('invalid once');
         }
 
         $now = time ();
@@ -131,6 +144,8 @@ class Signature
             // signature expire
             throw new SignatureException('signature expire');
         }
+
+        self::checkOnce ($once, compact ('url', 'time', 'platform'), $this->onceExpire);
 
         // 解密数据
         $decrypted = self::decrypt ($sign);
@@ -151,10 +166,31 @@ class Signature
 
         if ($testPayload != $payload) {
             // invalid signature
-            throw new SignatureException(['message' => "证书异常"]);
+            throw new SignatureException('signature invalid');
         }
 
         return $char;
+    }
+
+    /**
+     * @param       $once
+     * @param array $data
+     * @param int   $expire
+     * @throws InvalidArgumentException
+     */
+    private function checkOnce ($once, array $data, int $expire)
+    {
+        $cache = $this->getCache ();
+
+        $item = $cache->getItem (sprintf ("request=%s", $once));
+        if ($item->isHit ()) {
+            throw new SignatureException('only once');
+        }
+
+        $item->set($data);
+        $item->expiresAfter($expire);
+
+        $cache->save($item);
     }
 
     /**
@@ -213,5 +249,13 @@ class Signature
         }
 
         return $decrypted;
+    }
+
+    /**
+     * @return AdapterInterface
+     */
+    public function getCache(): AdapterInterface
+    {
+        return $this->cache;
     }
 }

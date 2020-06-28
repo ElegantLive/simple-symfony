@@ -22,7 +22,6 @@ class Token extends AbstractController
      * @param Request   $request
      * @param UserToken $userToken
      * @throws \Exception
-     * @throws \Psr\Cache\InvalidArgumentException
      */
     public function user (Request $request, UserToken $userToken)
     {

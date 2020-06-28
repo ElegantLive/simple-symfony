@@ -12,10 +12,8 @@ namespace App\Service;
 use App\Exception\Forbidden;
 use App\Exception\Token as TokenException;
 use App\Repository\UserRepository;
-use Faker\Factory;
 use Firebase\JWT\ExpiredException;
 use Firebase\JWT\JWT;
-use Psr\Cache\InvalidArgumentException as InvalidArgumentExceptionAlias;
 use Symfony\Component\Cache\Adapter\AdapterInterface;
 
 /**
@@ -116,8 +114,6 @@ class Token
         $pem = $decode ? $this->publicPem : $this->privatePem;
 
         return file_get_contents($this->projectDirectory . $pem);
-//        $file = $this->projectDirectory . $pem;
-//        return $decode ? openssl_get_privatekey($file): openssl_get_publickey($file);
     }
 
 //    /**
@@ -192,13 +188,13 @@ class Token
 //        return $token;
 //    }
 
-    /**
-     * @return string
-     */
-    private function generateKey ()
-    {
-        return Factory::create()->md5;
-    }
+//    /**
+//     * @return string
+//     */
+//    private function generateKey ()
+//    {
+//        return Factory::create()->md5;
+//    }
 
     /**
      * 生成jwt
