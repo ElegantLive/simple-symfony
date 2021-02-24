@@ -2,7 +2,6 @@
 
 namespace App\Repository;
 
-use App\Entity\Tag;
 use App\Entity\ThirdRelation;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Common\Persistence\ManagerRegistry;
@@ -89,9 +88,9 @@ class ThirdRelationRepository extends ServiceEntityRepository
      */
     public function suppleExist (string $type, int $first, int $second)
     {
-        if (in_array($type, ThirdRelation::$types) === false) throw new \Exception(sprintf('checkout your $type - %s', $type));
-        if (empty($first)) throw new \Exception(sprintf('checkout your $first - %s', $first));
-        if (empty($second)) throw new \Exception(sprintf('checkout your $second - %s', $second));
+        if (in_array($type, ThirdRelation::$types) === false) return false;
+        if (empty($first)) return false;
+        if (empty($second)) return false;
 
         $record = $this->findOneBy([
             'relate' => $type,

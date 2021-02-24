@@ -10,6 +10,7 @@
 ###< symfony/framework-bundle ###
 .idea/
 .vscode/
+.history/
 .env
 /config/certificate/*
 ###> symfony/web-server-bundle ###

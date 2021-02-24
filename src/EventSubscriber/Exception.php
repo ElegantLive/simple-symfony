@@ -16,6 +16,7 @@ use Symfony\Component\Messenger\MessageBusInterface;
 
 /**
  * Class Exception
+ *
  * @package App\EventSubscriber
  */
 class Exception implements EventSubscriberInterface
@@ -86,13 +87,14 @@ class Exception implements EventSubscriberInterface
 
     /**
      * ExceptionListener constructor.
+     *
      * @param                     $env
      * @param                     $from
      * @param                     $dev
      * @param LoggerInterface     $logger
      * @param MessageBusInterface $bus
      */
-    public function __construct ($env, $from, $dev, LoggerInterface $logger, MessageBusInterface $bus)
+    public function __construct($env, $from, $dev, LoggerInterface $logger, MessageBusInterface $bus)
     {
         $this->env    = $env;
         $this->logger = $logger;
@@ -104,7 +106,7 @@ class Exception implements EventSubscriberInterface
     /**
      * @return int
      */
-    private function getStatusCode (): int
+    private function getStatusCode(): int
     {
         return $this->statusCode;
     }
@@ -112,7 +114,7 @@ class Exception implements EventSubscriberInterface
     /**
      * @param int $statusCode
      */
-    private function setStatusCode (int $statusCode): void
+    private function setStatusCode(int $statusCode): void
     {
         $this->statusCode = $statusCode;
     }
@@ -120,7 +122,7 @@ class Exception implements EventSubscriberInterface
     /**
      * @return int
      */
-    private function getErrorCode (): int
+    private function getErrorCode(): int
     {
         return $this->errorCode;
     }
@@ -128,7 +130,7 @@ class Exception implements EventSubscriberInterface
     /**
      * @param int $errorCode
      */
-    private function setErrorCode (int $errorCode): void
+    private function setErrorCode(int $errorCode): void
     {
         $this->errorCode = $errorCode;
     }
@@ -136,7 +138,7 @@ class Exception implements EventSubscriberInterface
     /**
      * @return string
      */
-    private function getMessage (): string
+    private function getMessage(): string
     {
         return $this->message;
     }
@@ -144,7 +146,7 @@ class Exception implements EventSubscriberInterface
     /**
      * @param string $message
      */
-    private function setMessage (string $message): void
+    private function setMessage(string $message): void
     {
         $this->message = $message;
     }
@@ -152,7 +154,7 @@ class Exception implements EventSubscriberInterface
     /**
      * @return array
      */
-    private function getData (): array
+    private function getData(): array
     {
         return $this->data;
     }
@@ -160,7 +162,7 @@ class Exception implements EventSubscriberInterface
     /**
      * @param array $data
      */
-    private function setData (array $data): void
+    private function setData(array $data): void
     {
         $this->data = $data;
     }
@@ -168,7 +170,7 @@ class Exception implements EventSubscriberInterface
     /**
      * @return ExceptionEvent
      */
-    private function getEvent (): ExceptionEvent
+    private function getEvent(): ExceptionEvent
     {
         return $this->event;
     }
@@ -176,7 +178,7 @@ class Exception implements EventSubscriberInterface
     /**
      * @param mixed $event
      */
-    private function setEvent ($event): void
+    private function setEvent($event): void
     {
         $this->event = $event;
     }
@@ -184,7 +186,7 @@ class Exception implements EventSubscriberInterface
     /**
      * @return string
      */
-    public function getRoutingMissMessage (): string
+    public function getRoutingMissMessage(): string
     {
         return $this->routingMissMessage;
     }
@@ -192,7 +194,7 @@ class Exception implements EventSubscriberInterface
     /**
      * @return int
      */
-    public function getRoutingMissErrorCode (): int
+    public function getRoutingMissErrorCode(): int
     {
         return $this->routingMissErrorCode;
     }
@@ -201,7 +203,7 @@ class Exception implements EventSubscriberInterface
      * @param ExceptionEvent $event
      * @return ExceptionEvent
      */
-    public function onExceptionEvent (ExceptionEvent $event)
+    public function onExceptionEvent(ExceptionEvent $event)
     {
         $this->setEvent($event);
 
@@ -210,7 +212,7 @@ class Exception implements EventSubscriberInterface
         if ($exception instanceof NotFoundHttpException ||
             $exception instanceof MethodNotAllowedHttpException) {
             $exception = new Miss([
-                'message' => $this->getRoutingMissMessage(),
+                'message'   => $this->getRoutingMissMessage(),
                 'errorCode' => $this->getRoutingMissErrorCode()
             ]);
         }
@@ -245,7 +247,7 @@ class Exception implements EventSubscriberInterface
     /**
      * @return JsonResponse
      */
-    private function createJsonResponse ()
+    private function createJsonResponse()
     {
         return JsonResponse::create([
             'message'    => $this->getMessage(),
@@ -258,7 +260,7 @@ class Exception implements EventSubscriberInterface
     /**
      * @return array
      */
-    public static function getSubscribedEvents ()
+    public static function getSubscribedEvents()
     {
         return [
             ExceptionEvent::class => 'onExceptionEvent',

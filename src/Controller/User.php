@@ -27,6 +27,7 @@ use App\Validator\ChangePassword;
 use App\Validator\Register;
 use App\Validator\SetAvatar;
 use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\ORM\NonUniqueResultException;
 use Exception;
 use Psr\Cache\InvalidArgumentException;
 use Stof\DoctrineExtensionsBundle\Uploadable\UploadableManager;
@@ -38,6 +39,7 @@ use Symfony\Component\Serializer\Normalizer\AbstractNormalizer;
 /**
  * @Route("/user")
  * Class User
+ *
  * @package App\Controller
  */
 class User extends AbstractController
@@ -72,6 +74,7 @@ class User extends AbstractController
 
     /**
      * User constructor.
+     *
      * @param UserRepository              $userRepository
      * @param EntityManagerInterface      $entityManager
      * @param MessageBusInterface         $bus
@@ -79,12 +82,12 @@ class User extends AbstractController
      * @param VerificationCode            $code
      * @param UserAvatarHistoryRepository $avatarHistoryRepository
      */
-    public function __construct (UserRepository $userRepository,
-                                 EntityManagerInterface $entityManager,
-                                 MessageBusInterface $bus,
-                                 Serializer $serializer,
-                                 VerificationCode $code,
-                                 UserAvatarHistoryRepository $avatarHistoryRepository)
+    public function __construct(UserRepository $userRepository,
+                                EntityManagerInterface $entityManager,
+                                MessageBusInterface $bus,
+                                Serializer $serializer,
+                                VerificationCode $code,
+                                UserAvatarHistoryRepository $avatarHistoryRepository)
     {
         $this->userRepository          = $userRepository;
         $this->entityManager           = $entityManager;
@@ -99,7 +102,7 @@ class User extends AbstractController
      * @param Request $request
      * @throws Exception
      */
-    public function register (Request $request)
+    public function register(Request $request)
     {
         $data = $request->getData();
         (new Register())->check($data);
@@ -125,10 +128,47 @@ class User extends AbstractController
     }
 
     /**
+     * @Route("/info/rand", methods={"GET"}, name="randInfo")
+     * @throws NonUniqueResultException
+     */
+    public function randInfo()
+    {
+        $qb = $this->userRepository->createQueryBuilder('t');
+
+        $minId = $qb->select('min(t.id)')->getQuery()->getSingleScalarResult();
+        $maxId = $qb->select('max(t.id)')->getQuery()->getSingleScalarResult();
+
+        $randNum = 3;
+
+        $results = [];
+        $randQb  = $this->userRepository->createQueryBuilder('y');
+
+        while (true) {
+            $randItem = $randQb->where('y.id >= round(rand() * :randNum + :minId)')
+                ->setParameters([
+                    'randNum' => bcsub($maxId, $minId),
+                    'minId'   => $minId
+                ])
+                ->setMaxResults(1)
+                ->getQuery()
+                ->getOneOrNullResult();
+
+            $id = $randItem->getId();
+            if (in_array($id, $results)) continue;
+
+            array_push($results, $id);
+
+            if (count($results) >= $randNum) break;
+        }
+
+        throw new Success(['data' => $results]);
+    }
+
+    /**
      * @Route("/info/{id}", methods={"GET"}, name="userInfo")
      * @param int $id
      */
-    public function info (int $id)
+    public function info(int $id)
     {
         $user = $this->userRepository->find($id);
 
@@ -146,7 +186,7 @@ class User extends AbstractController
      * @Route("/self", methods={"GET"}, name="getSelfInfo")
      * @param Token $token
      */
-    public function getSelf (Token $token)
+    public function getSelf(Token $token)
     {
         $user = $token->getCurrentUser();
 
@@ -158,7 +198,7 @@ class User extends AbstractController
      * @param Token   $token
      * @param Request $request
      */
-    public function update (Token $token, Request $request)
+    public function update(Token $token, Request $request)
     {
         $id = $token->getCurrentTokenKey('id');
 
@@ -179,7 +219,7 @@ class User extends AbstractController
      * @param Token $token
      * @throws InvalidArgumentException
      */
-    public function changePasswordCode (Token $token)
+    public function changePasswordCode(Token $token)
     {
         $uid = $token->getCurrentTokenKey('id');
         $this->code->sendCode($this->code::CHANGE_PASSWORD, $uid);
@@ -194,7 +234,7 @@ class User extends AbstractController
      * @throws InvalidArgumentException
      * @throws Exception
      */
-    public function password (Token $token, Request $request)
+    public function password(Token $token, Request $request)
     {
         $uid  = $token->getCurrentTokenKey('id');
         $data = $request->getData();
@@ -219,7 +259,7 @@ class User extends AbstractController
      * @param Token $token
      * @throws InvalidArgumentException
      */
-    public function disable (Token $token)
+    public function disable(Token $token)
     {
         $id = $token->getCurrentTokenKey('id');
 
@@ -241,7 +281,7 @@ class User extends AbstractController
      * @param UploadableManager $uploadableManager
      * @throws Exception
      */
-    public function setAvatarByUpload (Token $token, Request $request, UploadableManager $uploadableManager)
+    public function setAvatarByUpload(Token $token, Request $request, UploadableManager $uploadableManager)
     {
         $data = $request->request->files->all();
 
@@ -287,7 +327,7 @@ class User extends AbstractController
      * @param Request $request
      * @throws Exception
      */
-    public function setAvatarByHistory (Token $token, Request $request)
+    public function setAvatarByHistory(Token $token, Request $request)
     {
         $user = $token->getCurrentUser();
 
@@ -322,7 +362,7 @@ class User extends AbstractController
      * @Route("/avatar/history", methods={"GET"}, name="getAvatarHistory")
      * @param Token $token
      */
-    public function avatarHistory (Token $token)
+    public function avatarHistory(Token $token)
     {
         $user = $token->getCurrentUser();
 

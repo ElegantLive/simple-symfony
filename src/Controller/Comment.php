@@ -28,6 +28,7 @@ use App\Service\Token;
 use App\Validator\Comment as CommentValidator;
 use App\Validator\CommentPager;
 use Doctrine\ORM\EntityManagerInterface;
+use Exception;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\Serializer\Normalizer\AbstractNormalizer;
@@ -97,7 +98,7 @@ class Comment extends AbstractController
      * @param         $size
      * @param string  $order
      * @param string  $by
-     * @throws \Exception
+     * @throws Exception
      */
     public function getPager (Request $request,
                              Token $token,
@@ -111,7 +112,7 @@ class Comment extends AbstractController
         $user = new User();
         try {
             $currentUser = $token->getCurrentUser();
-        } catch (\Exception $exception) {
+        } catch (Exception $exception) {
         }
 
         $data = compact('page', 'size', 'order', 'by');
@@ -164,9 +165,9 @@ class Comment extends AbstractController
 
             $listItem = $this->serializer->normalize($comment, 'json', [AbstractNormalizer::ATTRIBUTES => $filter]);
 
-            if ($user) {
-                $listItem['isLike']    = $this->thirdRelationRepository->suppleExist(ThirdRelation::COMMENT_LIKES, $user->getId(), $comment->getId());
-                $listItem['isDisLike'] = $this->thirdRelationRepository->suppleExist(ThirdRelation::COMMENT_LIKES, $user->getId(), $comment->getId());
+            if ($currentUser) {
+                $listItem['isLike']    = $this->thirdRelationRepository->suppleExist(ThirdRelation::COMMENT_LIKES, $currentUser->getId(), $comment->getId());
+                $listItem['isDisLike'] = $this->thirdRelationRepository->suppleExist(ThirdRelation::COMMENT_LIKES, $currentUser->getId(), $comment->getId());
             }
             array_push($list, $listItem);
         }, $comments);
@@ -179,7 +180,7 @@ class Comment extends AbstractController
      * @param Token   $token
      * @param Request $request
      * @param int     $id
-     * @throws \Exception
+     * @throws Exception
      */
     public function add (Token $token, Request $request, int $id)
     {
