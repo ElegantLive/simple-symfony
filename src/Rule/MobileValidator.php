@@ -12,7 +12,7 @@ class MobileValidator extends ConstraintValidator
         /* @var $constraint \App\Rule\Mobile */
         if (empty($value)) return;
 
-        $rule = '^1(3|4|5|7|8)[0-9]\d{8}$^';
+        $rule = '/^1(3|4|5|7|8)[0-9]\d{8}$/';
         $res  = preg_match($rule, $value);
 
         if (empty($res)) {
