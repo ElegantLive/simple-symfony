@@ -25,26 +25,27 @@ class ExceptionNotificationHandler implements MessageHandlerInterface
 
     /**
      * SignUpNotificationHandler constructor.
+     *
      * @param MailerInterface $mailer
      */
-    public function __construct (MailerInterface $mailer)
+    public function __construct(MailerInterface $mailer)
     {
-        $this->mailer     = $mailer;
+        $this->mailer = $mailer;
     }
 
     /**
      * @param ExceptionNotification $exceptionNotification
      * @throws \Symfony\Component\Mailer\Exception\TransportExceptionInterface
      */
-    public function __invoke (ExceptionNotification $exceptionNotification)
+    public function __invoke(ExceptionNotification $exceptionNotification)
     {
         $exception = $exceptionNotification->getException();
-        $code = $exception->getCode();
+        $code      = $exception->getCode();
 
         $flattenException = FlattenException::create($exception, $code, $exceptionNotification->getRequest()->headers->all());
 
-        $throwType = 'exception_full';
-        $renderType = 'html';
+        $throwType    = 'exception_full';
+        $renderType   = 'html';
         $templateName = sprintf('@Twig/Exception/%s.%s.twig', $throwType, $renderType);
 
         // send email
@@ -53,10 +54,10 @@ class ExceptionNotificationHandler implements MessageHandlerInterface
             ->subject(sprintf('[symfony]-怎么又有bug-%s', date('Y-M-D H:i:s')))
             ->htmlTemplate($templateName)
             ->context([
-                'status_code' => $code,
-                'status_text' => isset(Response::$statusTexts[$code]) ? Response::$statusTexts[$code] : '',
-                'exception' => $flattenException,
-                'logger' => null,
+                'status_code'    => $code,
+                'status_text'    => isset(Response::$statusTexts[$code]) ? Response::$statusTexts[$code] : '',
+                'exception'      => $flattenException,
+                'logger'         => null,
                 'currentContent' => null,
             ]);
 
