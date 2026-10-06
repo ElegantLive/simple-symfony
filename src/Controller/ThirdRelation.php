@@ -245,7 +245,7 @@ class ThirdRelation extends AbstractController
         $userId = $token->getCurrentTokenKey('id');
 
         if (empty($type)) throw new Parameter(['message' => '请重试']);
-        if (in_array($type, ['like', 'dislike']) == false) throw new Parameter(['参数类型错误']);
+        if (in_array($type, ['like', 'dislike']) == false) throw new Parameter('参数类型错误');
 
         $cleanType            = [];
         $cleanType['dislike'] = $toggleType['like'];
@@ -270,7 +270,7 @@ class ThirdRelation extends AbstractController
     {
         $userId = $token->getCurrentTokenKey('id');
         if (empty($type)) throw new Parameter(['message' => '请重试']);
-        if (in_array($type, ['like', 'dislike']) == false) throw new Parameter(['参数类型错误']);
+        if (in_array($type, ['like', 'dislike']) == false) throw new Parameter('参数类型错误');
 
         list(, $reply) = $this->cancelThird($userId, $id, $toggleType[$type]);
         $mapping = ['like' => 'LikeCount', 'dislike' => 'DisLikeCount'];

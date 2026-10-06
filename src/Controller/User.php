@@ -249,7 +249,7 @@ class User extends AbstractController
 
         $this->entityManager->flush();
 
-        $token->cleanToken();
+//        $token->cleanToken();
 
         throw new Success();
     }
