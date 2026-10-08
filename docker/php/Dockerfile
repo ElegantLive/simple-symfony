@@ -1,12 +1,17 @@
-# syntax=docker/dockerfile:1
 #
 # Symfony 4.3 / PHP 7.x development image.
+#
+# No `# syntax=docker/dockerfile:1` line on purpose: nothing here needs a BuildKit
+# frontend feature, and declaring it makes every build fetch that image from
+# Docker Hub first - which turns a registry hiccup into a build failure even when
+# all the real layers are cached.
 #
 # Notes on the choices made here:
 #   * PHP 7.3 + Debian bullseye: the dependency tree (Symfony 4.3, doctrine/*, the old
 #     composer.lock) predates PHP 8 and is happiest on a glibc base image.
-#   * Composer 2.2 LTS instead of latest: composer.lock is from the Flex 1.x era and
-#     Composer 2.3+ is stricter about it.
+#   * The bullseye-security suite is dropped from apt sources; see the comment on
+#     the apt-get step below.
+#   * Composer 1.10.27, not 2.x; see the comment on the ARG below.
 #   * The packagist mirror is overridden *inside the image only*, so composer.json
 #     (which still points at the dead packagist.phpcomposer.com) stays untouched.
 

@@ -30,7 +30,14 @@ x-php-base: &php-base
     DATABASE_URL: mysql://${DB_USER:-root}:${DB_PASSWORD:-root}@db:3306/${DB_NAME:-simple}
     REDIS_DSN: redis://redis:6379
     MESSENGER_TRANSPORT_DSN: doctrine://default
-    MAILER_DSN: smtp://mailhog:1025
+    # Follows the root .env, so the mail transport inside the container is the
+    # same one you use outside it:
+    #   .env has a real SMTP DSN -> the container really sends mail
+    #   .env has no MAILER_DSN   -> falls back to MailHog on http://localhost:8025,
+    #     which is what .env.docker.example gives you on a fresh clone
+    # To force the MailHog sink no matter what .env says:
+    #   MAILER_DSN=smtp://mailhog:1025 docker compose up -d
+    MAILER_DSN: ${MAILER_DSN:-smtp://mailhog:1025}
     FROM_EMAIL: ${FROM_EMAIL:-from@example.com}
     DEV_EMAIL: ${DEV_EMAIL:-dev@example.com}
     # nginx runs in front of php-fpm, so the app must trust its forwarded headers

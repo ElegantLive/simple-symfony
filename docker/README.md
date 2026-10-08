@@ -8,6 +8,7 @@
 # 1. 准备被 gitignore 掉的东西
 cp .env.docker.example .env      # 若已有 .env 可跳过
 ls config/certificate/jwt        # 必须存在，否则 JWT 登录会 500
+                                 # 缺了就生成：见「生成 RSA 证书」
 
 # 2. 初始化（构建镜像 → 装依赖 → 建表 → 起栈 → 探活）
 ./docker/setup.sh
@@ -18,7 +19,7 @@ ls config/certificate/jwt        # 必须存在，否则 JWT 登录会 500
 | 地址 | 用途 |
 |---|---|
 | http://localhost:8080 | 应用（`GET /tag/hot` 可用作健康探针） |
-| http://localhost:8025 | MailHog 收件箱，应用发出的邮件都在这，不会真发出去 |
+| http://localhost:8025 | MailHog 收件箱。**仅当 `.env` 里没有 `MAILER_DSN` 时**才收信，见「邮件怎么走」 |
 | localhost:3307 | MySQL（`simple` / `root` / `root`） |
 
 ## 服务拓扑
@@ -145,10 +146,78 @@ make -f Makefile.docker migrate          # 现在没有可用迁移，等于空�
 |---|---|---|
 | `DATABASE_URL` | `...@localhost:3306` | `...@db:3306` |
 | `REDIS_DSN` | `redis://127.0.0.1:6379` | `redis://redis:6379` |
-| `MAILER_DSN` | 真实 163/QQ SMTP | `smtp://mailhog:1025` |
+| `MAILER_DSN` | 你的真实 SMTP | **跟随 `.env`**（未设则回退 MailHog，见下） |
 | `TRUSTED_PROXIES` | 注释掉 | `127.0.0.1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16` |
 
 `TRUSTED_PROXIES` 必须设置：nginx 在 php-fpm 前面，不信任转发头的话 Symfony 会拿到错误的客户端 IP 和 scheme。
+
+> **注意**：`DATABASE_URL` / `REDIS_DSN` / `MESSENGER_TRANSPORT_DSN` 在 compose 里是**写死的**（指向 `db` / `redis`），
+> 所以你在 `.env` 里把它们改成 `localhost` 对容器**没有影响**，这是刻意的。
+> `MAILER_DSN`、`FROM_EMAIL`、`DEV_EMAIL`、`APP_ENV`、`APP_SECRET`、`DB_*`、各端口则**跟随 `.env`**。
+> 改完要重建容器：`docker compose up -d`（compose 会检测到插值变化并 recreate）。
+
+## 邮件怎么走
+
+`MAILER_DSN` 在 compose 里写成 `${MAILER_DSN:-smtp://mailhog:1025}`，也就是**跟随你的 `.env`**：
+
+| `.env` 里的 `MAILER_DSN` | 容器行为 |
+|---|---|
+| 有真实 SMTP DSN（如 `smtp://user:pass@smtp.163.com`） | **真的往外发信**，MailHog 收不到 |
+| 没有设 | 回退到 `smtp://mailhog:1025`，全部被 MailHog 拦截（`http://localhost:8025`） |
+
+`.env.docker.example` 默认不给 `MAILER_DSN`，所以**全新 clone 是 MailHog 安全默认**。
+要在容器内强行拦截（即使 `.env` 设了真地址）：
+
+```bash
+MAILER_DSN=smtp://mailhog:1025 docker compose up -d
+```
+
+`FROM_EMAIL` / `DEV_EMAIL` 总是取自 `.env`，是信封地址，不决定投递去向。
+
+实测过这条路真的通（163）：真实凭证 `SENT`，而**故意改错密码被拒**
+（`Failed to authenticate on SMTP server ... LOGIN, PLAIN, XOAUTH2`），
+说明容器确实在和 163 做 SMTP 认证，不是代理伪造成功。
+
+## 生成 RSA 证书
+
+应用从 `config/certificate` 读两套密钥（**被 gitignore，不在仓库里**）：
+
+| 目录 | 用途 | 被谁读 |
+|---|---|---|
+| `jwt/` | JWT 签名（RS256） | `App\Service\Token` → `firebase/php-jwt` |
+| `sign/` | 请求签名（RSA 加解密） | `App\Service\Signature` → `openssl_private_encrypt` |
+
+每套三个文件，因为应用和客户端要的编码不同：
+
+| 文件 | 格式 | 说明 |
+|---|---|---|
+| `rsa_private.pem` | PKCS#1 `BEGIN RSA PRIVATE KEY` | PHP openssl 直接读的就是它 |
+| `rsa_public.pem` | SPKI `BEGIN PUBLIC KEY` | 交给客户端的那份 |
+| `pkcs8_rsa_private.pem` | PKCS#8 `BEGIN PRIVATE KEY` | 给要求 PKCS#8 的客户端 |
+
+用 `docker/gen-certificates.sh` 生成：
+
+```bash
+# 默认 4096 位；已存在的密钥必须先删或加 --force
+docker compose run --rm --no-deps \
+  -v "$PWD/config/certificate:/var/www/html/config/certificate" \
+  --entrypoint sh app docker/gen-certificates.sh
+
+# 参数
+#   --bits N   密钥长度，默认 4096（仓库里现有的只有 1024 位，偏弱）
+#   --force    覆盖前把旧文件备份成 *.bak.<时间戳>
+```
+
+> **为什么上面要写 `-v`**：compose 里 `config/certificate` 是 **`:ro` 只读挂载**，
+> 不覆盖挂载的话脚本会报 `not writable` 并退出（脚本会直接把这条命令打给你）。
+> 也可以直接在宿主机上跑（宿主机上它是普通可写目录）。
+
+脚本拒绝覆盖已存在的密钥，除非给 `--force` —— 因为换密钥会让**已签发的所有 JWT 立刻失效**，
+并且会**弄坏任何把 `rsa_public.pem` 内置了的客户端**。它会自己校验
+`openssl rsa -check` 以及「公钥是否确实由该私钥导出」。
+
+当前仓库里那套密钥（1024 位）**实测可用**，JWT 编解码正常、
+用另一把密钥签的 token 会被正确拒绝、签名加解密双向往返正常，所以**不是必须重新生成**。
 
 ## 依赖安装（composer）
 
@@ -240,5 +309,10 @@ php-fpm 会自动重读 PHP 文件；改 `config/` 下的 YAML 或 `.env` 需要
 - **`GET /tag/hot` 经 nginx → php-fpm → Symfony → MySQL 返回 200 与预期 JSON**
 - nelmio CORS 头正常；Predis 连通 Redis（PING → PONG）
 - worker 正常 `Consuming messages from transports "async"`
+- 邮件：回退模式下确实进 MailHog；跟随 `.env` 时确实经 163 认证发出
+  （错密码被拒，见「邮件怎么走」）
+- 现有 `config/certificate` 密钥：JWT RS256 往返正常、异钥 token 被拒、签名加解密往返正常
+- `docker/gen-certificates.sh`：生成 / 校验配对 / 无 `--force` 拒绝 / `--force` 备份 / `<2048` 位拒绝，
+  生成的密钥能跑通真实 JWT 往返
 
-未验证：`prod` stage、MailHog 实际收信、JWT 登录链路（需要真实密钥与用户数据）。
+未验证：`prod` stage、JWT 登录链路端到端（需要真实用户数据）、真实收件箱是否收到那封验证邮件。
