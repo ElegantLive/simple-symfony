@@ -22,9 +22,32 @@ $reportPath    = getenv('SMOKE_REPORT') ?: dirname(__DIR__, 2) . '/var/smoke-rep
 
 $lines = [];
 
+// ------------------------------------------------------- what PHP itself said
+
+// The built-in server's stderr. A failure the framework never got to handle - a
+// parse error, a fatal in the front controller, a warning turned into an
+// exception - is only ever reported here, and this is the first thing worth
+// knowing about.
+$serverLog = getenv('SMOKE_SERVER_LOG');
+if ($serverLog !== false && $serverLog !== '' && is_file($serverLog)) {
+    $tail = array_values(array_filter(
+        array_map('trim', array_slice(file($serverLog, FILE_IGNORE_NEW_LINES), -40)),
+        function ($line) {
+            // The built-in server logs one line per request; the interesting ones
+            // are the errors.
+            return $line !== '' && stripos($line, 'Accepted') === false && stripos($line, 'Closing') === false;
+        }
+    ));
+
+    foreach (array_slice($tail, -3) as $line) {
+        $lines[] = 'server: ' . mb_substr($line, 0, 300);
+    }
+}
+
 // ------------------------------------------------------------ failing requests
 
-$problems = [];
+$problems  = [];
+$failures  = [];
 if (is_file($reportPath)) {
     foreach (file($reportPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
         $row = json_decode($line, true);
@@ -42,49 +65,25 @@ if (is_file($reportPath)) {
         }
 
         if ($reason !== null) {
-            $problems[] = sprintf(
-                '%s %s -> %s (%s)',
-                $row['method'] ?? '?',
-                $row['path'] ?? '?',
-                $reason,
-                $row['label'] ?? '?'
-            );
-        }
-    }
-}
+            $where      = sprintf('%s %s (%s)', $row['method'] ?? '?', $row['path'] ?? '?', $row['label'] ?? '?');
+            $problems[] = $where . ' -> ' . $reason;
 
-if ($problems) {
-    $lines[] = sprintf('%d request(s) failed:', count($problems));
-    foreach (array_slice($problems, 0, 6) as $problem) {
-        $lines[] = '  ' . $problem;
-    }
-}
-
-// ------------------------------------------------- where the application blew up
-
-// var/log/test.log records one entry per unhandled exception, with the file and
-// line it came from. That is the thing worth knowing about a 500, and it is not
-// in the response body.
-$appLog = dirname(__DIR__, 2) . '/var/log/test.log';
-if (is_file($appLog)) {
-    $log     = (string) file_get_contents($appLog);
-    $sites   = [];
-    $matches = [];
-
-    if (preg_match_all('/"file":"([^"]+)","line":(\d+)/', $log, $matches, PREG_SET_ORDER)) {
-        foreach ($matches as $match) {
-            // Vendor frames are noise here; a frame inside src/ is the answer.
-            if (strpos($match[1], '/src/') === false) {
-                continue;
+            // The body is the part that matters when the response is not the
+            // application's JSON: it is PHP's own error output, and it names the
+            // file and line. One per distinct body, so three identical failures do
+            // not use up the annotation budget.
+            $body = trim((string) ($row['body'] ?? ''));
+            if ($body !== '' && !isset($failures[$body])) {
+                $failures[$body] = $where;
             }
-            $sites[] = basename($match[1]) . ':' . $match[2];
         }
     }
+}
 
-    $sites = array_values(array_unique($sites));
-    if ($sites) {
-        $lines[] = 'exception sites in src/ (from var/log/test.log): ' . implode(', ', $sites);
-    }
+// The bodies go first: they are the only place a PHP-level failure explains
+// itself, and GitHub caps how many annotations a step may emit.
+foreach (array_slice($failures, 0, 3, true) as $body => $where) {
+    $lines[] = $where . ' responded with: ' . mb_substr(preg_replace('/\s+/', ' ', $body), 0, 400);
 }
 
 // ------------------------------------------------------------- the test summary
@@ -99,9 +98,16 @@ if ($phpUnitOutput !== null && is_file($phpUnitOutput)) {
     }
 
     if (preg_match_all('/^\d+\) (.+)$/m', $text, $matches) === 1 || !empty($matches[1])) {
-        foreach (array_slice($matches[1], 0, 5) as $heading) {
+        foreach (array_slice($matches[1], 0, 3) as $heading) {
             $lines[] = 'failed: ' . trim($heading);
         }
+    }
+}
+
+if ($problems) {
+    $lines[] = sprintf('%d request(s) failed, first few:', count($problems));
+    foreach (array_slice($problems, 0, 4) as $problem) {
+        $lines[] = '  ' . $problem;
     }
 }
 
@@ -111,7 +117,7 @@ if (!$lines) {
 
 // -------------------------------------------------------------------- emit them
 
-foreach (array_slice($lines, 0, 10) as $line) {
+foreach (array_slice($lines, 0, 9) as $line) {
     // GitHub wants one line per command, with these three characters escaped.
     echo '::error::' . str_replace(
         ["\r", "\n", '%'],
@@ -119,3 +125,4 @@ foreach (array_slice($lines, 0, 10) as $line) {
         $line
     ) . "\n";
 }
+

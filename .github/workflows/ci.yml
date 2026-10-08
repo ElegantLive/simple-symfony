@@ -228,7 +228,8 @@ jobs:
             # Also emit annotations. The job log needs admin rights to read, so
             # without these a red run on this (public) repository is invisible from
             # the outside - which is how the first version of this job failed.
-            php tests/Support/annotate-failures.php "$RUNNER_TEMP/phpunit-functional.txt" \
+            SMOKE_SERVER_LOG="$RUNNER_TEMP/server.log" \
+              php tests/Support/annotate-failures.php "$RUNNER_TEMP/phpunit-functional.txt" \
               || echo "::error::annotate-failures.php itself did not run; see the log"
           fi
 
