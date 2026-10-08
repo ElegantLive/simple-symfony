@@ -22,6 +22,49 @@ $reportPath    = getenv('SMOKE_REPORT') ?: dirname(__DIR__, 2) . '/var/smoke-rep
 
 $lines = [];
 
+// ------------------------------------------------------- what Symfony logged
+
+// var/log/test.log is where the message actually is. When a response comes back as
+// Symfony's own error page rather than the application's JSON, nothing in the
+// response says why: the non-debug error page deliberately hides the exception.
+// The framework's ErrorListener logs it at critical, and the monolog test handler
+// is fingers_crossed on error, so it is in this file.
+$appLog = dirname(__DIR__, 2) . '/var/log/test.log';
+if (is_file($appLog)) {
+    $seen = [];
+
+    foreach (file($appLog, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
+        if (stripos($line, 'CRITICAL') === false && stripos($line, 'app.ERROR') === false) {
+            continue;
+        }
+
+        // "[2026-01-01 00:00:00] request.CRITICAL: Uncaught PHP Exception ..." - the
+        // message starts after the level marker.
+        if (preg_match('/\]\s+[a-z_.]+\.(?:CRITICAL|ERROR):\s*(.+)$/i', $line, $match) !== 1) {
+            continue;
+        }
+
+        $message = trim(preg_replace('/\s+/', ' ', $match[1]));
+
+        // Drop the context payload monolog appends; the message is the interesting
+        // part and the context only pushes it past the annotation limit.
+        $cut = strpos($message, ' {"');
+        if ($cut !== false) {
+            $message = substr($message, 0, $cut);
+        }
+
+        if ($message === '' || isset($seen[$message])) {
+            continue;
+        }
+
+        $seen[$message] = true;
+    }
+
+    foreach (array_slice(array_keys($seen), -3) as $message) {
+        $lines[] = 'logged: ' . mb_substr($message, 0, 400);
+    }
+}
+
 // ------------------------------------------------------- what PHP itself said
 
 // The built-in server's stderr. A failure the framework never got to handle - a
