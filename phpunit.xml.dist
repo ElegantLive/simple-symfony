@@ -6,11 +6,24 @@
     remote schema makes every run depend on network access.
 
     Local overrides go in phpunit.xml, which is gitignored.
+
+    Two suites on purpose. "unit" is self-contained and needs nothing running;
+    "functional" drives a real HTTP server and skips itself when SMOKE_BASE_URL is
+    not set, so the fast suite is still the default thing to run locally. CI runs
+    them separately, which keeps a broken server from being reported as a broken
+    unit test.
 -->
 <phpunit bootstrap="vendor/autoload.php" colors="true" cacheResult="false">
     <testsuites>
-        <testsuite name="app">
-            <directory suffix="Test.php">tests</directory>
+        <testsuite name="unit">
+            <directory suffix="Test.php">tests/Entity</directory>
+            <directory suffix="Test.php">tests/MessageHandler</directory>
+            <directory suffix="Test.php">tests/Rule</directory>
+            <directory suffix="Test.php">tests/Service</directory>
+            <directory suffix="Test.php">tests/Validator</directory>
+        </testsuite>
+        <testsuite name="functional">
+            <directory suffix="Test.php">tests/Functional</directory>
         </testsuite>
     </testsuites>
 </phpunit>

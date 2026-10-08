@@ -1,0 +1,15 @@
+# The test environment does not get to need Redis.
+#
+# config/packages/cache.yaml points framework.cache.app at cache.adapter.redis and
+# defines cache.my_redis on the same provider. That is right for the application and
+# wrong for a test run: nothing in the suite needs a cache shared with anything
+# else, and the only thing that has to survive between two requests is
+# App\Service\Signature's once-token, which lives for 60 seconds inside a single
+# run.
+#
+# This also overrides config/packages/cache.yaml by being loaded later - see
+# App\Kernel::configureContainer(), which loads packages/*.yaml first and
+# packages/<env>/**/*.yaml afterwards.
+framework:
+    cache:
+        app: cache.adapter.filesystem
