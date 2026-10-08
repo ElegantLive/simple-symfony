@@ -14,12 +14,30 @@ jobs:
     name: Lint + tests (PHP 7.3)
     runs-on: ubuntu-22.04
 
-    # APP_ENV has to be a real environment variable and not just a line in
-    # .env.test: config/bootstrap.php chooses WHICH dotenv file to load based on
-    # APP_ENV, so a value that only exists inside .env.test cannot select itself.
-    # Everything else (DSNs, secrets) comes from the committed .env.test.
+    # APP_ENV and the DSNs are given as real environment variables rather than left
+    # to the committed .env.test alone.
+    #
+    # APP_ENV has to be a real one either way: config/bootstrap.php chooses WHICH
+    # dotenv file to load based on APP_ENV, so a value that only exists inside
+    # .env.test cannot select itself.
+    #
+    # The rest are here because relying on .env.test for them did not work: the
+    # application answered with Symfony's error page reading
+    # `Environment variable not found: "FROM_EMAIL"`, with no .env.test value
+    # reaching it, even though the console steps had clearly loaded DATABASE_URL
+    # from the same file. "What .env.test contributes" below reports what bootstrap
+    # actually sees, and the next step is the reason for the duplication.
     env:
       APP_ENV: test
+      APP_DEBUG: '0'
+      APP_SECRET: test-only-not-a-secret
+      DATABASE_URL: mysql://root:root@127.0.0.1:3306/simple_test
+      MAILER_DSN: smtp://127.0.0.1:1025
+      FROM_EMAIL: from@example.test
+      DEV_EMAIL: dev@example.test
+      MESSENGER_TRANSPORT_DSN: sync://
+      REDIS_DSN: redis://127.0.0.1:6379
+      CORS_ALLOW_ORIGIN: '*'
 
     # The functional suite drives the application over real HTTP, so the services
     # the application itself needs have to be here: MySQL because the schema uses
@@ -266,6 +284,28 @@ jobs:
         # is added to a controller and never registered would go untested while
         # every test still passed.
         run: php tests/Support/check-routes.php
+
+      - name: What .env.test contributes
+        # A warning annotation, so it is readable without admin rights on this
+        # repository's logs. It reports what config/bootstrap.php actually ends up
+        # with: whether .env.test is in the checkout, and whether its values reached
+        # $_ENV. The job env above makes the run independent of that, but knowing
+        # which of the two it is explains why the duplication is there.
+        run: |
+          set +e
+          present=$([ -f .env.test ] && echo yes || echo no)
+          probe=$(php -r '
+            require "config/bootstrap.php";
+            printf(
+              "APP_ENV=%s APP_DEBUG=%s FROM_EMAIL=%s DATABASE_URL=%s DOTENV_VARS=%s",
+              $_SERVER["APP_ENV"] ?? "-",
+              $_SERVER["APP_DEBUG"] ?? "-",
+              $_ENV["FROM_EMAIL"] ?? "MISSING",
+              isset($_ENV["DATABASE_URL"]) ? "set" : "MISSING",
+              $_SERVER["SYMFONY_DOTENV_VARS"] ?? "unset"
+            );
+          ' 2>&1 | tail -1)
+          echo "::warning::env probe: .env.test present=$present; $probe"
 
       - name: Unit tests
         run: php phpunit.phar --configuration phpunit.xml.dist --testsuite unit
