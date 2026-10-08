@@ -59,15 +59,28 @@ bullseye 现在是 Debian 的 oldoldstable，它的 security 池里的 `.deb` �
 入口脚本因此对 `php-fpm` **不做** `gosu`；其他命令（`bin/console`、`composer`、worker）都会降到 www-data。
 把 php-fpm 包进 gosu 会让它无法打开官方日志路径 `/proc/self/fd/2`，直接启动失败。
 
-## 数据库 schema：这里**不用** migrations
+## 数据库 schema：这个仓库**已经不用** migrations 了
 
-这个仓库的迁移链有 bug，**从空库跑迁移永远不可能成功**：
+`src/Migrations/.gitignore` 的内容只有一行 `*`（在 2020-03-19 的 commit `36ad985`
+"ignore database migrations" 里加的）。这条规则带来的后果：
 
-- `Version20190923042819` 里有 `CREATE TABLE user ...`
-- `Version20200317144652` 里**又**有一次 `CREATE TABLE user ...`
+| 文件 | git 状态 |
+|---|---|
+| `src/Migrations/.gitignore` | 已跟踪，内容 `*` |
+| `Version20190923042819.php`（2019-09） | 曾经被跟踪（加于该规则之前），**已删除** |
+| `Version20200317144652.php`、`...20200323062157.php`、`...20200327063558.php` | 被忽略，**从未提交**，只存在于本地 |
 
-所以 `doctrine:migrations:migrate` 跑到第二个就报 `Table 'user' already exists`，留下半套 schema。
-`docker/setup.sh` 因此改用 entity 映射建表：
+所以「git 里的迁移集合」曾被冻结在 2019 年的一个过时快照上，而 entity 一直在演进
+（`sex` 从 simple_array 改成 enum、加了 `Timestamps`、又加了 `SoftDeleteable`）。
+那个过时迁移实测有两个问题：
+
+- **本机**（本地还多出 3 个未提交的迁移）：`migrate` 报 `Table 'user' already exists`
+- **全新 clone**（当时只有那一个迁移）：`migrate` 能跑通，但建出的表**缺
+  `created_at`/`updated_at`/`deleted_at` 且 `sex` 类型不对**，Doctrine 自己判定
+  `[ERROR] The database schema is not in sync with the current mapping file`
+
+两条路都不可用，所以**那个过时的迁移已删除**，`src/Migrations` 在 git 里现在只剩
+`.gitignore`。**entity 映射是唯一的事实来源**，`docker/setup.sh` 用它建表：
 
 ```bash
 docker compose run --rm --no-deps -e RUN_BOOT_TASKS=0 app \
@@ -77,13 +90,22 @@ docker compose run --rm --no-deps -e RUN_BOOT_TASKS=0 app \
 它只执行差异、可重复执行，并且会**顺带建出 `messenger_messages`**——
 因为 Doctrine messenger transport 注册了自己的 schema subscriber，所以 worker 的队列表不用额外步骤。
 
-入口脚本里 `RUN_MIGRATIONS` 默认 **0**（关闭），就是被这个坑逼出来的：以前每次启动都跑迁移，
-结果是容器反复崩溃。想手动试迁移：
+入口脚本里 `RUN_MIGRATIONS` 默认 **0**（关闭）。想手动跑迁移：
 
 ```bash
-make -f Makefile.docker migrate          # 预期会失败，见上
 make -f Makefile.docker schema-update    # 实际可用的方式
+make -f Makefile.docker migrate          # 现在没有可用迁移，等于空操作
 ```
+
+> **已知无害噪音**：`doctrine:schema:validate` 永远报 `not in sync`，
+> `schema:update` 也永远生成一条 `ALTER TABLE user CHANGE sex sex enum('MAN', 'WOMEN')`。
+> 原因是 entity 写的是 `columnDefinition="enum('MAN', 'WOMEN')"`（逗号后有空格），
+> MySQL 会规范化成 `enum('MAN','WOMEN')`，Doctrine 逐字符比较后判定不一致，于是永不收敛。
+> 跑一下不会有任何实际影响。
+
+如果你想要回正经的迁移历史，需要重建 baseline：删掉本地那 3 个被忽略的文件，
+对空库跑 `doctrine:migrations:diff` 生成一个完整迁移并提交，同时把
+`src/Migrations/.gitignore` 的 `*` 改成 `*` + `!.gitignore` + `!Version*.php`。
 
 ## 卷与热更新
 
@@ -175,7 +197,8 @@ docker build --target prod -f docker/php/Dockerfile -t simple-app:prod .
 文件强制 `chmod 0644`，不再依赖检出权限；如果你改过这些路径要一并加上。
 
 **`Table 'user' already exists`**
-你在跑 migrations。这是仓库既有问题，见上面「数据库 schema」一节，改用 `schema-update`。
+你在跑 migrations，而本地还剩着那 3 个从未提交的迁移文件（见上面「数据库 schema」一节）。
+改用 `schema-update`，或把那 3 个文件也删掉。
 
 **`/article/list` 之类接口返回 500 `Call to a member function getId() on null`**
 这是应用层行为，不是环境问题：这些接口需要 `Authorization` token，空库下没有当前用户。

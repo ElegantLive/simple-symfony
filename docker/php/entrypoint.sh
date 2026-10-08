@@ -94,13 +94,13 @@ fi
 # app service, and migrations cannot run before vendor/ exists.
 if [ "$needs_app" = "1" ] && [ "${RUN_BOOT_TASKS:-0}" = "1" ]; then
     # --- 3a. schema -------------------------------------------------------
-    # Both are opt-in and OFF by default, because this repository's migration
-    # chain cannot build a fresh database: Version20190923042819 already creates
-    # `user` and Version20200317144652 creates it again, so migrate always dies
-    # with "Table 'user' already exists" and leaves a half-applied schema.
-    # docker/setup.sh bootstraps the schema once from the entity mapping
-    # instead; see docker/README.md. Failures here are warnings, not fatal, so a
-    # bad schema never keeps the container from starting.
+    # Both are opt-in and OFF by default. Migrations were abandoned in this
+    # repository (src/Migrations/.gitignore is `*`, and the single stale
+    # migration that predated that rule has been removed), so there is nothing
+    # here to run - and running the local-only leftovers would build a schema
+    # that does not match the entities. docker/setup.sh bootstraps the schema
+    # from the entity mapping instead; see docker/README.md. Failures here are
+    # warnings, not fatal, so a bad schema never keeps the container from starting.
     if [ "${RUN_MIGRATIONS:-0}" = "1" ]; then
         echo "[entrypoint] applying migrations ..."
         if ! php bin/console doctrine:migrations:migrate \

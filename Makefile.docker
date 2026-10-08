@@ -54,7 +54,7 @@ shell: ## Open a shell in the app container as www-data
 console: ## Run bin/console (ARGS="cache:clear")
 	$(COMPOSE) exec -u www-data $(SERVICE) php bin/console $(ARGS)
 
-migrate: ## Apply migrations (KNOWN BROKEN here - two migrations both CREATE TABLE user)
+migrate: ## Apply migrations (none are tracked in git - see docker/README.md)
 	$(COMPOSE) exec -u www-data $(SERVICE) php bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration
 
 schema-update: ## Sync the schema from the entity mapping (the path that works here)

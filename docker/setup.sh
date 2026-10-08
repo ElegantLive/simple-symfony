@@ -75,16 +75,22 @@ $COMPOSE run --rm --no-deps app \
     composer install --prefer-dist --no-interaction --no-progress --no-scripts
 
 # --- 3b. schema -------------------------------------------------------------
-# This deliberately does NOT use doctrine:migrations:migrate. The repository's
-# migration chain cannot build a fresh database: Version20190923042819 already
-# issues CREATE TABLE user and Version20200317144652 issues it a second time, so
-# migrate always aborts with "Table 'user' already exists" after applying only
-# part of the schema.
+# This deliberately does NOT use doctrine:migrations:migrate, because migrations
+# were abandoned in this repository: src/Migrations/.gitignore contains `*`, so
+# every migration added after 2020-03 was silently kept out of git, and the one
+# stale migration that predated that rule (Version20190923042819) has been
+# removed. What remains under src/Migrations is therefore a local-only,
+# never-committed grab-bag of diffs taken against transient database states.
 #
-# The entity mapping is the working source of truth. schema:update is also safe
-# to re-run (it executes only the difference), and it creates messenger_messages
-# too, because the Doctrine messenger transport registers its own schema
-# subscriber - so the worker has its queue table without any extra step.
+# The entity mapping is the source of truth. schema:update is safe to re-run (it
+# executes only the difference), and it creates messenger_messages too, because
+# the Doctrine messenger transport registers its own schema subscriber - so the
+# worker gets its queue table without any extra step.
+#
+# Note: it always reports one query, `ALTER TABLE user CHANGE sex sex
+# enum('MAN', 'WOMEN')`. That is a cosmetic round-trip - the entity's
+# columnDefinition has a space after the comma and MySQL normalises it away - so
+# it never converges. Harmless, and not something this stack introduces.
 echo "==> bootstrapping the database schema from the entity mapping"
 $COMPOSE run --rm --no-deps -e RUN_BOOT_TASKS=0 app \
     php bin/console doctrine:schema:update --force --env="${APP_ENV:-dev}" --no-interaction
