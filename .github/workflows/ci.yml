@@ -203,11 +203,20 @@ jobs:
             exit 1
           fi
 
+          # -e is on by default in GitHub's run steps, and `set -uo pipefail` does
+          # not turn it off. Without this, the first failing pipeline below ends the
+          # step immediately - taking the server cleanup, the log tail and the
+          # annotations with it, which is exactly what happened the first time this
+          # job ran red.
+          set +e
+
           SMOKE_BASE_URL=http://127.0.0.1:8000 \
           SMOKE_MAILHOG_URL=http://127.0.0.1:8025 \
             php phpunit.phar --configuration phpunit.xml.dist --testsuite functional --fail-on-skipped \
             2>&1 | tee "$RUNNER_TEMP/phpunit-functional.txt"
           status=${PIPESTATUS[0]}
+
+          set -e
 
           kill "$server" 2>/dev/null || true
           wait "$server" 2>/dev/null || true
@@ -219,7 +228,8 @@ jobs:
             # Also emit annotations. The job log needs admin rights to read, so
             # without these a red run on this (public) repository is invisible from
             # the outside - which is how the first version of this job failed.
-            php tests/Support/annotate-failures.php "$RUNNER_TEMP/phpunit-functional.txt" || true
+            php tests/Support/annotate-failures.php "$RUNNER_TEMP/phpunit-functional.txt" \
+              || echo "::error::annotate-failures.php itself did not run; see the log"
           fi
 
           exit "$status"
