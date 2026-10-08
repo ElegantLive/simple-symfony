@@ -31,37 +31,22 @@ $lines = [];
 // is fingers_crossed on error, so it is in this file.
 $appLog = dirname(__DIR__, 2) . '/var/log/test.log';
 if (is_file($appLog)) {
-    $seen = [];
-
-    foreach (file($appLog, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
-        if (stripos($line, 'CRITICAL') === false && stripos($line, 'app.ERROR') === false) {
-            continue;
+    $tail = array_values(array_filter(
+        array_map('trim', array_slice(file($appLog, FILE_IGNORE_NEW_LINES), -6)),
+        function ($line) {
+            return $line !== '';
         }
+    ));
 
-        // "[2026-01-01 00:00:00] request.CRITICAL: Uncaught PHP Exception ..." - the
-        // message starts after the level marker.
-        if (preg_match('/\]\s+[a-z_.]+\.(?:CRITICAL|ERROR):\s*(.+)$/i', $line, $match) !== 1) {
-            continue;
-        }
-
-        $message = trim(preg_replace('/\s+/', ' ', $match[1]));
-
-        // Drop the context payload monolog appends; the message is the interesting
-        // part and the context only pushes it past the annotation limit.
-        $cut = strpos($message, ' {"');
+    // Verbatim, at whatever level, rather than matched against a pattern: the point
+    // is to rule the log in or out, and a regex that misses the format silently
+    // reports "the application logged nothing".
+    foreach (array_slice($tail, -3) as $line) {
+        $cut = strpos($line, ' {"');
         if ($cut !== false) {
-            $message = substr($message, 0, $cut);
+            $line = substr($line, 0, $cut);
         }
-
-        if ($message === '' || isset($seen[$message])) {
-            continue;
-        }
-
-        $seen[$message] = true;
-    }
-
-    foreach (array_slice(array_keys($seen), -3) as $message) {
-        $lines[] = 'logged: ' . mb_substr($message, 0, 400);
+        $lines[] = 'test.log: ' . mb_substr($line, 0, 350);
     }
 }
 

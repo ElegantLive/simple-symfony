@@ -74,6 +74,20 @@ jobs:
           echo "workdir       : $PWD"
           echo "APP_ENV       : $APP_ENV"
 
+      - name: Restore the pinned tool phars
+        # Fetching these two files from getcomposer.org and phar.phpunit.de has
+        # failed intermittently on this repository - three times now, twice with an
+        # unchanged workflow - which stops the job before any test runs. The
+        # versions never change, so caching them means only the first run has to
+        # reach the network at all.
+        id: tools
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ runner.temp }}/composer1.phar
+            phpunit.phar
+          key: ci-tools-composer-1.10.27-phpunit-9.6.38
+
       - name: Fetch Composer 1
         # composer.lock pins symfony/flex v1.4.5 and ocramius/package-versions
         # 1.4.0, both of which declare "composer-plugin-api": "^1.0". Composer 2
@@ -89,15 +103,13 @@ jobs:
         # happened by hand) and so is a bad minute on the network: --retry only
         # covers a curl error, not a transfer that reports success and delivers a
         # short file. So the whole download-and-verify is retried, against two
-        # sources, and the hash is what decides whether an attempt counts. The
-        # version-pinned URLs are immutable, which is what makes pinning the hash
-        # meaningful.
+        # sources, and the hash is what decides whether an attempt counts. Both
+        # URLs serve byte-identical files, so one pinned hash covers both.
         #
         # set +e for the whole step: under the default -e any single unguarded
         # command that fails ends the step with no explanation at all, which is
         # what happened here - the failure showed up as a bare "exit code 1" with
-        # no annotation, because the download had actually succeeded and something
-        # after it had not.
+        # no annotation.
         run: |
           set +e
 
@@ -107,26 +119,37 @@ jobs:
           "
           expected=230d28fb29f3c6c07ab2382390bef313e36de17868b2bd23b2e070554cae23d2
           phar="$RUNNER_TEMP/composer1.phar"
+          log="$RUNNER_TEMP/composer-fetch.log"
+          : > "$log"
 
           ok=no
+          if [ -f "$phar" ] && [ "$(sha256sum "$phar" | cut -d' ' -f1)" = "$expected" ]; then
+            ok=yes
+            echo "reusing the cached composer1.phar" | tee -a "$log"
+          fi
+
           for attempt in 1 2 3; do
+            [ "$ok" = yes ] && break
             for source in $sources; do
               rm -f "$phar"
               curl -sSL --retry 5 --retry-delay 3 --retry-connrefused --retry-all-errors --max-time 300 \
-                -o "$phar" "$source"
+                -o "$phar" "$source" 2>>"$log"
               got=$(sha256sum "$phar" 2>/dev/null | cut -d' ' -f1)
               size=$(wc -c < "$phar" 2>/dev/null || echo 0)
-              echo "attempt $attempt $source -> ${size} bytes, sha256 ${got:-none}"
-              if [ "$got" = "$expected" ]; then ok=yes; break 2; fi
+              echo "attempt $attempt $source -> ${size} bytes, sha256 ${got:-none}" | tee -a "$log"
+              if [ "$got" = "$expected" ]; then ok=yes; break; fi
             done
+            [ "$ok" = yes ] && break
             sleep 5
           done
 
           version=$(php "$phar" --version 2>&1 | head -1)
-          echo "phar=$phar ok=$ok version=$version"
+          echo "phar=$phar ok=$ok version=$version" | tee -a "$log"
 
           if [ "$ok" != yes ] || ! printf '%s' "$version" | grep -q '^Composer version 1\.'; then
-            echo "::error::could not obtain a verified Composer 1 ($version); the lock cannot be installed otherwise"
+            while IFS= read -r line; do
+              echo "::error::composer fetch: $line"
+            done < <(tail -c 900 "$log")
             exit 1
           fi
 
@@ -170,7 +193,13 @@ jobs:
 
           expected=6b5235f282c6ccab3674ac27c5b1ddbd1da838e74bf07002ddcfd030d31298d7
           ok=no
+          if [ -f phpunit.phar ] && [ "$(sha256sum phpunit.phar | cut -d' ' -f1)" = "$expected" ]; then
+            ok=yes
+            echo "reusing the cached phpunit.phar"
+          fi
+
           for attempt in 1 2 3 4 5; do
+            [ "$ok" = yes ] && break
             rm -f phpunit.phar
             curl -sSL --retry 5 --retry-delay 3 --retry-connrefused --retry-all-errors --max-time 300 \
               -o phpunit.phar https://phar.phpunit.de/phpunit-9.6.38.phar
