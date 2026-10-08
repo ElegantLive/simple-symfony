@@ -16,6 +16,11 @@
 # Written by redis-server when it runs with the project root as its working
 # directory. Was committed once by accident.
 /dump.rdb
+# PHPUnit: phpunit.xml.dist is the committed configuration, phpunit.xml is the
+# local override, and the phar is fetched on demand (see .github/workflows/ci.yml).
+/phpunit.xml
+/phpunit.phar
+/.phpunit.result.cache
 ###> symfony/web-server-bundle ###
 /.web-server-pid
 ###< symfony/web-server-bundle ###

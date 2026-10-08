@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    No xsi:noNamespaceSchemaLocation on purpose: phpunit is not a composer
+    dependency here (see .github/workflows/ci.yml for why), so the usual
+    vendor/phpunit/phpunit/phpunit.xsd path does not exist and pointing at the
+    remote schema makes every run depend on network access.
+
+    Local overrides go in phpunit.xml, which is gitignored.
+-->
+<phpunit bootstrap="vendor/autoload.php" colors="true" cacheResult="false">
+    <testsuites>
+        <testsuite name="app">
+            <directory suffix="Test.php">tests</directory>
+        </testsuite>
+    </testsuites>
+</phpunit>
