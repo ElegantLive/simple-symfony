@@ -67,6 +67,12 @@ services:
         arguments:
             $from: '%env(FROM_EMAIL)%'
 
+    # The sign-up mail used to hardcode a real address in the handler. Take it
+    # from the environment like VerificationCode and the exception subscriber do.
+    App\MessageHandler\SignUpNotificationHandler:
+        arguments:
+            $from: '%env(FROM_EMAIL)%'
+
     App\Service\Signature:
         arguments:
             $public: '%sign.public%'

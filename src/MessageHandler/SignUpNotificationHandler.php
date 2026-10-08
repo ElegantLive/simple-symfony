@@ -28,15 +28,22 @@ class SignUpNotificationHandler implements MessageHandlerInterface
     private $mailer;
 
     /**
+     * @var string
+     */
+    private $from;
+
+    /**
      * SignUpNotificationHandler constructor.
      * @param UserRepository  $userRepository
      * @param MailerInterface $mailer
+     * @param string          $from
      */
-    public function __construct (UserRepository $userRepository, MailerInterface $mailer)
+    public function __construct (UserRepository $userRepository, MailerInterface $mailer, string $from)
     {
 
         $this->userRepository = $userRepository;
         $this->mailer         = $mailer;
+        $this->from           = $from;
     }
 
     /**
@@ -49,7 +56,7 @@ class SignUpNotificationHandler implements MessageHandlerInterface
         if (empty($user)) return;
 
         // send email
-        $email = (new TemplatedEmail())->from('qq52577517@163.com')
+        $email = (new TemplatedEmail())->from($this->from)
             ->to($user->getEmail())
             ->subject('thanks for your sign up')
             ->htmlTemplate('emails/signup.html.twig')
