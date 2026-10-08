@@ -25,7 +25,7 @@ class User extends Base
     ];
 
     protected $trust = ['sex', 'name'];
-    protected $hidden = ['password', 'rand', 'deletedAt', 'deleted'];
+    protected $hidden = ['password', 'deletedAt', 'deleted'];
     protected $normal = ['id', 'sex', 'name', 'createdAt', 'avatar'];
 
     /**
@@ -56,14 +56,12 @@ class User extends Base
     private $avatar;
 
     /**
-     * @ORM\Column(type="string", length=32)
+     * 255 to fit any password_hash() output: bcrypt is 60 characters, argon2id
+     * around 97. It was 32, which was exactly an md5 hex digest.
+     *
+     * @ORM\Column(type="string", length=255)
      */
     private $password;
-
-    /**
-     * @ORM\Column(type="string", length=8)
-     */
-    private $rand;
 
     /**
      * NOT NULL has to be written inside columnDefinition, not expressed through
@@ -138,29 +136,28 @@ class User extends Base
     }
 
     /**
+     * Hashes and stores the plaintext password. The hashing lives in the
+     * App\Entity\Traits\Password trait so the algorithm is stated in one place.
+     *
      * @param string $password
      * @return User
      */
     public function setPassword (string $password): self
     {
-        $this->password = $this->encodePassword($password);
+        $this->password = $this->hashSecret($password);
 
         return $this;
-    }
-
-    public function getRand (): ?string
-    {
-        return $this->rand;
     }
 
     /**
-     * @return User
+     * Check a plaintext password against the stored hash.
+     *
+     * @param string $password
+     * @return bool
      */
-    public function setRand (): self
+    public function verifyPassword (string $password): bool
     {
-        $this->rand = rand(10000000, 99999999);
-
-        return $this;
+        return $this->verifySecret($password, $this->password);
     }
 
     public function getSex ($default = false): ?string
@@ -175,12 +172,5 @@ class User extends Base
         $this->sex = $sex;
 
         return $this;
-    }
-
-    public function encodePassword (string $password = '', string $rand = '')
-    {
-        $password = empty($password) ? self::getPassword() : $password;
-        $rand     = empty($rand) ? self::getRand() : $rand;
-        return $this->encodeSecret($password, $rand);
     }
 }

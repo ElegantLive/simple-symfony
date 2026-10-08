@@ -116,7 +116,6 @@ class User extends AbstractController
         $user->setTrust(['email', 'mobile', 'sex', 'name']);
         $user->setTrustFields($data);
 
-        $user->setRand();
         $user->setPassword($data['password']);
 
         $this->entityManager->persist($user);
@@ -244,7 +243,6 @@ class User extends AbstractController
 
         $user = $this->userRepository->find($uid);
 
-        $user->setRand();
         $user->setPassword($data['password']);
 
         $this->entityManager->flush();
