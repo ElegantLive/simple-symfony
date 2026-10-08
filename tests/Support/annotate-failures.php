@@ -176,9 +176,33 @@ if ($phpUnitOutput !== null && is_file($phpUnitOutput)) {
         $lines[] = $match[1];
     }
 
-    if (preg_match_all('/^\d+\) (.+)$/m', $text, $matches) === 1 || !empty($matches[1])) {
-        foreach (array_slice($matches[1], 0, 3) as $heading) {
-            $lines[] = 'failed: ' . trim($heading);
+    // The heading alone says which test; the lines under it say why, and the why is
+    // the whole point of the annotation. PHPUnit 9 prints "N) test name" followed by
+    // the exception or assertion message.
+    $linesOfOutput = preg_split('/\r?\n/', $text);
+    $captured      = 0;
+
+    foreach ($linesOfOutput as $index => $line) {
+        if (preg_match('/^\d+\) (.+)$/', $line, $match) !== 1) {
+            continue;
+        }
+
+        $detail = '';
+        for ($i = $index + 1; $i < min($index + 4, count($linesOfOutput)); $i++) {
+            $candidate = trim($linesOfOutput[$i]);
+            if ($candidate !== '' && strpos($candidate, 'Failed asserting') !== false) {
+                $detail = $candidate;
+                break;
+            }
+            if ($detail === '' && $candidate !== '' && strpos($candidate, '/') !== 0) {
+                $detail = $candidate;
+            }
+        }
+
+        $lines[] = 'failed: ' . trim($match[1]) . ($detail === '' ? '' : ' :: ' . mb_substr($detail, 0, 300));
+
+        if (++$captured >= 3) {
+            break;
         }
     }
 }
