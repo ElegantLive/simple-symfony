@@ -97,20 +97,27 @@ make -f Makefile.docker schema-update    # 实际可用的方式
 make -f Makefile.docker migrate          # 现在没有可用迁移，等于空操作
 ```
 
-> **已知无害噪音**：`doctrine:schema:validate` 永远报 `not in sync`，
-> `schema:update` 也永远生成一条 `ALTER TABLE user CHANGE sex sex enum('MAN','WOMEN')`。
+> **`User.sex` 与 `columnDefinition` 的坑（已修，留个记录）**
 >
-> 原因是 `@ORM\Column(..., columnDefinition="enum('MAN','WOMEN')")` 这个写法：
-> 生成 DDL 时 `columnDefinition` 会**覆盖其它所有列属性**，所以映射里隐含的
-> `NOT NULL` 从未被写进数据库，`sex` 实际是 nullabe。而 DBAL 的 `Comparator::diffColumn`
-> 比较的是 `type / notnull / unsigned / autoincrement / default / length`
-> （`length` 有 `?: 255` 兜底，所以 0 与 255 不算差异），**根本不看 `columnDefinition`** ——
-> 于是唯一差异就是 `notnull`：DB 侧 false、映射侧 true，永不收敛。
-> 重跑 ALTER 也修不好，因为 ALTER 本身就是由 `columnDefinition` 生成的，里面没有 NOT NULL。
+> 这个列曾经让 `doctrine:schema:validate` 永远报 `not in sync`，且 `schema:update`
+> 每次都会生成一条 `ALTER TABLE user CHANGE sex sex enum('MAN','WOMEN')` —— 反复执行也修不好。
 >
-> 实际影响：无。要真正消掉它，二选一 —— 把 entity 改成 `nullable=true`（贴合 DB 现状、零风险，
-> 但等于承认该列可空），或把 `NOT NULL` 写进 `columnDefinition` 字符串并执行一次
-> `ALTER TABLE user MODIFY sex enum('MAN','WOMEN') NOT NULL`（保留原意，但若已有 NULL 数据会失败）。
+> 原因是 `@ORM\Column(type="string", columnDefinition="enum('MAN','WOMEN')")` 这个写法：
+> 生成 DDL 时 `columnDefinition` 会**原样输出并覆盖其它所有列属性**，所以映射里隐含的
+> `NOT NULL` 从未被写进数据库，`sex` 实际建成了 nullable。而 DBAL 的
+> `Comparator::diffColumn` 比较的是 `type / notnull / unsigned / autoincrement / default / length`
+> （`length` 有 `?: 255` 兜底，所以 DB 的 0 与映射的 255 不算差异），**根本不读 `columnDefinition`**
+> —— 于是唯一差异就是 `notnull`：DB 侧 false、映射侧 true。重跑 ALTER 也没用，因为 ALTER 本身
+> 就是由这个字符串生成的，里面没有 NOT NULL。
+>
+> 修法：把 `NOT NULL` **写进 `columnDefinition` 字符串里面**，然后执行一次
+> `doctrine:schema:update --force`。之后 `server_version` 侧收敛，`schema:validate` 通过，
+> `schema:update` 变成 `Nothing to update`。entity 里那段注释写明了为什么不能把
+> `NOT NULL` 挪出来当普通属性 —— 别当成冗余删掉。
+>
+> 注意：`NOT NULL` 加在已有数据的表上时，若存在 `sex IS NULL` 的行会失败（容器里 MySQL 是
+> `STRICT_TRANS_TABLES`，所以会**报错**而不是把 NULL 静默转成 `''`，这是好事）。
+> 迁移前先 `SELECT COUNT(*) FROM user WHERE sex IS NULL;`。
 
 如果你想要回正经的迁移历史，需要重建 baseline：删掉本地那 3 个被忽略的文件，
 对空库跑 `doctrine:migrations:diff` 生成一个完整迁移并提交，同时把

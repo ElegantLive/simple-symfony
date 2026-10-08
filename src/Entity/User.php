@@ -66,7 +66,16 @@ class User extends Base
     private $rand;
 
     /**
-     * @ORM\Column(type="string", columnDefinition="enum('MAN','WOMEN')")
+     * NOT NULL has to be written inside columnDefinition, not expressed through
+     * the usual column attributes: a column definition string is emitted
+     * verbatim, so every other attribute (including notnull) is ignored when the
+     * DDL is generated. Without it the column is created nullable while the
+     * mapping still claims not null, and doctrine:schema:validate then fails
+     * forever - it compares notnull, ignores columnDefinition entirely, and the
+     * ALTER it keeps emitting is generated from this same string, so it can
+     * never repair the column.
+     *
+     * @ORM\Column(type="string", columnDefinition="enum('MAN','WOMEN') NOT NULL")
      */
     private $sex = 'MAN';
 

@@ -87,13 +87,8 @@ $COMPOSE run --rm --no-deps app \
 # the Doctrine messenger transport registers its own schema subscriber - so the
 # worker gets its queue table without any extra step.
 #
-# Note: it always reports one query, `ALTER TABLE user CHANGE sex sex
-# enum('MAN','WOMEN')`. That is not a real difference: `columnDefinition` on the
-# entity overrides every other column attribute when DDL is generated, so the
-# implicit NOT NULL never reaches the database and the column stays nullable,
-# while DBAL's Comparator (which ignores columnDefinition entirely and compares
-# notnull) sees a mismatch forever. Applying it changes nothing. See
-# docker/README.md for the two ways to make it go away.
+# `schema:update` reports "Nothing to update" once the database exists, so the
+# step is a genuine no-op on every run after the first.
 echo "==> bootstrapping the database schema from the entity mapping"
 $COMPOSE run --rm --no-deps -e RUN_BOOT_TASKS=0 app \
     php bin/console doctrine:schema:update --force --env="${APP_ENV:-dev}" --no-interaction
