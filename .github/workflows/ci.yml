@@ -79,6 +79,22 @@ jobs:
           # process, so their coverage cannot be collected here anyway, and Xdebug
           # makes every run slower. See tests/Support/route-coverage.php.
           coverage: none
+          # Composer 1, installed by setup-php rather than downloaded by hand.
+          #
+          # composer.lock pins symfony/flex v1.4.5 and ocramius/package-versions
+          # 1.4.0, both of which declare "composer-plugin-api": "^1.0"; Composer 2
+          # provides 2.2.0 and refuses the lock outright.
+          #
+          # This replaced a hand-rolled curl of composer.phar into $RUNNER_TEMP.
+          # That step failed four times on this repository with two different
+          # symptoms - a truncated download, and then a file whose sha256 was
+          # exactly right and which nonetheless exited 1 with no output when PHP
+          # ran it - and it stops the job before any test can run. setup-php's own
+          # installer is the better-tested path, and asking for v1 explicitly is
+          # what keeps setup-php's default v2 from winning: earlier notes here
+          # warned about Composer 2 being the one that runs, which was true when
+          # the version was left to chance. The step below still verifies it.
+          tools: composer:v1
 
       - name: Diagnostics
         # Cheap, and it means a failure in this job explains itself instead of
@@ -93,96 +109,27 @@ jobs:
           echo "APP_ENV       : $APP_ENV"
 
       - name: Restore the pinned tool phars
-        # Fetching these two files from getcomposer.org and phar.phpunit.de has
-        # failed intermittently on this repository - three times now, twice with an
-        # unchanged workflow - which stops the job before any test runs. The
-        # versions never change, so caching them means only the first run has to
-        # reach the network at all.
+        # Fetching the pinned phars has failed intermittently on this repository -
+        # repeatedly, sometimes with an unchanged workflow - and it stops the job
+        # before any test runs. The versions never change, so caching them means
+        # only the first run has to reach the network at all. (Composer 1 is no
+        # longer in this group; setup-php installs it.)
         id: tools
         uses: actions/cache@v4
         with:
-          path: |
-            ${{ runner.temp }}/composer1.phar
-            phpunit.phar
-          key: ci-tools-composer-1.10.27-phpunit-9.6.38
+          path: phpunit.phar
+          key: ci-tools-phpunit-9.6.38
 
-      - name: Fetch Composer 1
-        # composer.lock pins symfony/flex v1.4.5 and ocramius/package-versions
-        # 1.4.0, both of which declare "composer-plugin-api": "^1.0". Composer 2
-        # provides 2.2.0 and refuses the lock outright, so this must be Composer 1,
-        # for the same reason docker/php/Dockerfile pins it.
-        #
-        # Fetched into $RUNNER_TEMP and always invoked by absolute path rather
-        # than installed onto PATH: that avoids needing write access to
-        # /usr/local/bin, and it avoids the risk of setup-php's own composer (v2)
-        # still winning the PATH lookup and silently being the one that runs.
-        #
-        # A truncated download is a real failure mode (curl exits 18, and it has
-        # happened by hand) and so is a bad minute on the network: --retry only
-        # covers a curl error, not a transfer that reports success and delivers a
-        # short file. So the whole download-and-verify is retried, against two
-        # sources, and the hash is what decides whether an attempt counts. Both
-        # URLs serve byte-identical files, so one pinned hash covers both.
-        #
-        # set +e for the whole step: under the default -e any single unguarded
-        # command that fails ends the step with no explanation at all, which is
-        # what happened here - the failure showed up as a bare "exit code 1" with
-        # no annotation.
+      - name: Composer 1 is the one on PATH
+        # Verifies rather than assumes. The lock cannot be installed with Composer
+        # 2, and a silent fallback to it would fail later with a confusing message
+        # about composer-plugin-api.
         run: |
           set +e
-
-          sources="
-          https://getcomposer.org/download/1.10.27/composer.phar
-          https://github.com/composer/composer/releases/download/1.10.27/composer.phar
-          "
-          expected=230d28fb29f3c6c07ab2382390bef313e36de17868b2bd23b2e070554cae23d2
-          phar="$RUNNER_TEMP/composer1.phar"
-          log="$RUNNER_TEMP/composer-fetch.log"
-          : > "$log"
-
-          # A download only counts when the file is there, matches the hash, AND
-          # actually runs. The middle check alone is not enough: one run produced a
-          # file with exactly the right sha256 whose `php composer.phar --version`
-          # printed nothing at all, which failed the step with no useful symptom.
-          works() {
-            [ -f "$phar" ] || return 1
-            [ "$(sha256sum "$phar" 2>/dev/null | cut -d' ' -f1)" = "$expected" ] || return 1
-            case "$(php "$phar" --version 2>&1 | head -1)" in
-              'Composer version 1.'*) return 0 ;;
-              *) return 1 ;;
-            esac
-          }
-
-          ok=no
-          for attempt in 1 2 3; do
-            if works; then ok=yes; echo "using a verified composer1.phar" | tee -a "$log"; break; fi
-            for source in $sources; do
-              rm -f "$phar"
-              curl -sSL --retry 5 --retry-delay 3 --retry-connrefused --retry-all-errors --max-time 300 \
-                -o "$phar" "$source" 2>>"$log"
-              echo "attempt $attempt $source -> $(wc -c < "$phar" 2>/dev/null || echo 0) bytes, sha256 $(sha256sum "$phar" 2>/dev/null | cut -d' ' -f1)" | tee -a "$log"
-              if works; then ok=yes; break; fi
-            done
-            [ "$ok" = yes ] && break
-            sleep 5
-          done
-
-          version=$(php "$phar" --version 2>&1 | head -1)
-          echo "phar=$phar ok=$ok version=$version" | tee -a "$log"
-
-          if [ "$ok" != yes ]; then
-            php "$phar" --version > "$RUNNER_TEMP/composer-run.log" 2>&1
-            run_status=$?
-            {
-              echo "php: $(php -v | head -1)"
-              echo "phar: $(ls -l "$phar" 2>&1)"
-              echo "run exit: $run_status"
-              echo "run output: $(head -c 300 "$RUNNER_TEMP/composer-run.log")"
-              tail -c 400 "$log"
-            } >> "$log"
-            while IFS= read -r line; do
-              echo "::error::composer fetch: $line"
-            done < <(tail -c 900 "$log")
+          version=$(composer --version 2>&1 | head -1)
+          echo "composer: $version"
+          if ! printf '%s' "$version" | grep -q '^Composer version 1\.'; then
+            echo "::error::expected Composer 1.x on PATH, got: ${version:-nothing}"
             exit 1
           fi
 
@@ -191,14 +138,14 @@ jobs:
         # assets:install), which wants a .env and the gitignored
         # config/certificate keys that do not exist yet at this point. Both are
         # created by the next two steps, and nothing here needs a booted kernel.
-        run: php "$RUNNER_TEMP/composer1.phar" install --no-scripts --no-interaction --prefer-dist --no-progress
+        run: composer install --no-scripts --no-interaction --prefer-dist --no-progress
 
       - name: composer.json is still valid
         # --no-check-lock on purpose. The lock has been stale for a long time
         # ("not up to date with the latest changes in composer.json"), which is a
         # genuine pre-existing problem, but without this flag the step exits 2 on
         # every run and the signal drowns in the noise. Worth fixing separately.
-        run: php "$RUNNER_TEMP/composer1.phar" validate --no-check-publish --no-check-lock
+        run: composer validate --no-check-publish --no-check-lock
 
       - name: Every PHP file parses
         run: |
