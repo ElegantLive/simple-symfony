@@ -197,15 +197,31 @@ jobs:
             exit 1
           fi
 
-      - name: Give the kernel a .env to load
-        # .env is gitignored and holds real credentials, so a fresh checkout has
-        # none - and config/bootstrap.php calls Dotenv::loadEnv() unconditionally,
-        # and Symfony's Dotenv throws PathException when the file is not readable.
-        # Until now that never came up because nothing in this job booted the
-        # kernel. An empty file satisfies the loader; every value the test
-        # environment needs comes from the committed .env.test, which loadEnv()
-        # picks up because APP_ENV is test.
-        run: touch .env
+      - name: Give the kernel a .env, with APP_ENV in it
+        # Two things have to hold for the test environment to be the one that runs,
+        # and only one of them was true before.
+        #
+        # .env has to exist: config/bootstrap.php calls Dotenv::loadEnv()
+        # unconditionally, and Symfony's Dotenv throws PathException when the file
+        # is not readable.
+        #
+        # APP_ENV has to be *in* it. loadEnv() decides which dotenv file to load by
+        # reading $_SERVER and $_ENV, and the runner's environment does not reach
+        # those - getenv() reports APP_ENV=test while $_SERVER does not have it, so
+        # this build's variables_order has no E. Dotenv therefore fell back to its
+        # own default of "dev", the kernel loaded config/packages/dev instead of
+        # config/packages/test, and cache.app stayed on cache.adapter.redis:
+        #
+        #   no Redis on the runner
+        #     -> AbstractAdapter::save() swallows the connection error
+        #     -> VerificationCode::sendCode() answered 发送成功 without storing the code
+        #     -> POST /user/register answered 404 请获取验证码
+        #
+        # That is why one route pair failed while the rest of the suite passed: the
+        # job env below supplies the DSNs, so a dev-mode application still booted
+        # and served most routes. var/log/dev.log, written in a checkout that tracks
+        # nothing under var/, is what gave it away.
+        run: printf 'APP_ENV=test\n' > .env
 
       - name: Generate the RSA key pairs
         # config/certificate is gitignored, and App\Service\Token (RS256) and
