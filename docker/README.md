@@ -147,9 +147,16 @@ make -f Makefile.docker migrate          # 现在没有可用迁移，等于空�
 | `DATABASE_URL` | `...@localhost:3306` | `...@db:3306` |
 | `REDIS_DSN` | `redis://127.0.0.1:6379` | `redis://redis:6379` |
 | `MAILER_DSN` | 你的真实 SMTP | **跟随 `.env`**（未设则回退 MailHog，见下） |
+| `CORS_ALLOW_ORIGIN` | 你的来源正则 | **原样生效**（应用直接读 `.env`，不经过 compose） |
 | `TRUSTED_PROXIES` | 注释掉 | `127.0.0.1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16` |
 
 `TRUSTED_PROXIES` 必须设置：nginx 在 php-fpm 前面，不信任转发头的话 Symfony 会拿到错误的客户端 IP 和 scheme。
+
+> **`CORS_ALLOW_ORIGIN` 现在是必需的**：`config/packages/nelmio_cors.yaml` 用 `%env(CORS_ALLOW_ORIGIN)%` 读取它
+> （`origin_regex: true`，所以填的是**正则**）。以前这里的配置被硬编码成 `allow_origin: ['*']`，
+> 导致 `.env` 里这个变量**从未生效**、任何来源都被放行；现在它真的起作用了。
+> 缺了它会直接请求失败，所以 `.env.docker.example` 里已给出默认值。
+> 改完记得 `php bin/console cache:clear`（应用读的是 bind mount 进来的 `.env`，不走 compose 插值）。
 
 > **注意**：`DATABASE_URL` / `REDIS_DSN` / `MESSENGER_TRANSPORT_DSN` 在 compose 里是**写死的**（指向 `db` / `redis`），
 > 所以你在 `.env` 里把它们改成 `localhost` 对容器**没有影响**，这是刻意的。

@@ -13,6 +13,9 @@
 .history/
 .env
 /config/certificate/*
+# Written by redis-server when it runs with the project root as its working
+# directory. Was committed once by accident.
+/dump.rdb
 ###> symfony/web-server-bundle ###
 /.web-server-pid
 ###< symfony/web-server-bundle ###

@@ -1,7 +1,15 @@
 nelmio_cors:
     defaults:
         origin_regex: true
-        allow_origin: ['*']
+        # Was hardcoded to ['*'], which made CORS_ALLOW_ORIGIN in .env a dead
+        # variable: every environment allowed every origin no matter what was
+        # configured. It is read from the environment now, so the value in .env
+        # (and the real environment variable in production) is what applies.
+        #
+        # NOTE: this tightens behaviour. The default in .env only matches
+        # localhost, so any client on another origin - a LAN address, a deployed
+        # frontend, a device - must be added there or it will lose CORS access.
+        allow_origin: ['%env(CORS_ALLOW_ORIGIN)%']
         allow_methods: ['GET', 'OPTIONS', 'POST', 'PUT', 'PATCH', 'DELETE']
         allow_headers: ['Content-Type', 'Authorization', 'Signature', 'once', 'time', 'platform', 'parameter','token','Origin', 'X-Requested-With', 'Accept','current-version']
         expose_headers: ['Link']
