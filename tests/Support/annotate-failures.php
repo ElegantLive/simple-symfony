@@ -91,6 +91,7 @@ if ($serverLog !== false && $serverLog !== '' && is_file($serverLog)) {
 
 $problems  = [];
 $failures  = [];
+$byPath    = [];
 if (is_file($reportPath)) {
     foreach (file($reportPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
         $row = json_decode($line, true);
@@ -104,17 +105,22 @@ if (is_file($reportPath)) {
         } elseif ((int) $row['status'] >= 500) {
             $reason = 'HTTP ' . $row['status'] . ' ' . ($row['message'] ?? '');
         } elseif (empty($row['envelope'])) {
-            $reason = 'not the application envelope: ' . mb_substr((string) ($row['body'] ?? ''), 0, 120);
+            $reason = 'not the application envelope';
         }
 
         if ($reason !== null) {
-            $where      = sprintf('%s %s (%s)', $row['method'] ?? '?', $row['path'] ?? '?', $row['label'] ?? '?');
-            $problems[] = $where . ' -> ' . $reason;
+            $where      = sprintf('%s %s', $row['method'] ?? '?', $row['path'] ?? '?');
+            $problems[] = sprintf('%s (%s) -> %s', $where, $row['label'] ?? '?', $reason);
+
+            if (!isset($byPath[$where])) {
+                $byPath[$where] = ['count' => 0, 'reason' => $reason];
+            }
+            $byPath[$where]['count']++;
 
             // The body is the part that matters when the response is not the
-            // application's JSON: it is PHP's own error output, and it names the
-            // file and line. One per distinct body, so three identical failures do
-            // not use up the annotation budget.
+            // application's JSON: it is PHP's own error output or a framework error
+            // page, and those name the cause. One per distinct body, so three
+            // identical failures do not use up the annotation budget.
             $body = trim((string) ($row['body'] ?? ''));
             if ($body !== '' && !isset($failures[$body])) {
                 $failures[$body] = $where;
@@ -126,8 +132,53 @@ if (is_file($reportPath)) {
 // The bodies go first: they are the only place a PHP-level failure explains
 // itself, and GitHub caps how many annotations a step may emit.
 foreach (array_slice($failures, 0, 3, true) as $body => $where) {
-    $lines[] = $where . ' responded with: ' . mb_substr(preg_replace('/\s+/', ' ', $body), 0, 400);
+    $text = $body;
+
+    if (stripos($text, '<html') !== false || stripos($text, '<!DOCTYPE') !== false) {
+        // Symfony's error pages open with a large <style> block, so a raw prefix
+        // is nothing but CSS. Drop the styles and scripts, then the tags.
+        $text = preg_replace('#<(style|script)\b[^>]*>.*?</\1>#is', ' ', $text);
+        $text = html_entity_decode(strip_tags((string) $text), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $text = 'html page: ' . $text;
+    }
+
+    $lines[] = $where . ' responded with: ' . mb_substr(trim(preg_replace('/\s+/', ' ', (string) $text)), 0, 400);
 }
+
+// Which routes, grouped: the full list does not fit in an annotation, but the set
+// of distinct paths does, and that is what says whether the failure is everywhere
+// or confined to one controller.
+$groups = [];
+foreach ($byPath as $where => $info) {
+    $groups[] = $where . ' x' . $info['count'];
+}
+
+foreach (array_chunk($groups, 6) as $chunk) {
+    $lines[] = 'failed: ' . implode(' | ', $chunk);
+}
+
+// ------------------------------------------------------------ what is in var/log
+
+// If the application logged nothing, saying so out loud is worth more than an
+// empty annotation: it rules the log out as a source.
+$logDir = dirname(__DIR__, 2) . '/var/log';
+$inventory = [];
+foreach (glob($logDir . '/*') ?: [] as $file) {
+    $inventory[] = basename($file) . '=' . filesize($file) . 'B';
+}
+$lines[] = 'var/log: ' . ($inventory ? implode(' ', $inventory) : '(empty or missing)');
+
+// What the step's own environment actually held. The application is started from
+// this shell, so a value missing here was missing there too - and .env.test is the
+// only other place it could have come from.
+$lines[] = sprintf(
+    'step env: APP_ENV=%s APP_DEBUG=%s DATABASE_URL=%s MAILER_DSN=%s MESSENGER_TRANSPORT_DSN=%s',
+    var_export(getenv('APP_ENV'), true),
+    var_export(getenv('APP_DEBUG'), true),
+    getenv('DATABASE_URL') === false ? 'MISSING' : 'set',
+    getenv('MAILER_DSN') === false ? 'MISSING' : 'set',
+    getenv('MESSENGER_TRANSPORT_DSN') === false ? 'MISSING' : 'set'
+);
 
 // ------------------------------------------------------------- the test summary
 
@@ -147,20 +198,13 @@ if ($phpUnitOutput !== null && is_file($phpUnitOutput)) {
     }
 }
 
-if ($problems) {
-    $lines[] = sprintf('%d request(s) failed, first few:', count($problems));
-    foreach (array_slice($problems, 0, 4) as $problem) {
-        $lines[] = '  ' . $problem;
-    }
-}
-
 if (!$lines) {
     $lines[] = 'the functional run failed and produced neither a failing request nor a test summary';
 }
 
 // -------------------------------------------------------------------- emit them
 
-foreach (array_slice($lines, 0, 9) as $line) {
+foreach (array_slice($lines, 0, 10) as $line) {
     // GitHub wants one line per command, with these three characters escaped.
     echo '::error::' . str_replace(
         ["\r", "\n", '%'],

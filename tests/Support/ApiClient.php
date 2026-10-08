@@ -285,7 +285,7 @@ final class ApiClient
             'errorCode'  => $response->errorCode(),
             'message'    => $response->message(),
             'envelope'   => $response->isEnvelope(),
-            'body'       => mb_substr(preg_replace('/\s+/', ' ', $response->body()), 0, 500),
+            'body'       => mb_substr(preg_replace('/\s+/', ' ', $response->body()), 0, 4000),
             'curlError'  => $error === '' ? null : $error,
             'seconds'    => round($elapsed, 3),
         ]);
