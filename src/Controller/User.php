@@ -25,6 +25,7 @@ use App\Service\Serializer;
 use App\Service\VerificationCode;
 use App\Validator\ChangePassword;
 use App\Validator\Register;
+use App\Validator\RegisterCode;
 use App\Validator\SetAvatar;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\NonUniqueResultException;
@@ -112,6 +113,12 @@ class User extends AbstractController
         if ($this->userRepository->findOneBy(['email' => $data['email']])) throw new Used(['message' => '邮箱已被占用']);
         if ($this->userRepository->findOneBy(['mobile' => $data['mobile']])) throw new Used(['message' => '号码已被占用']);
         if ($this->userRepository->findOneBy(['name' => $data['name']])) throw new Used(['message' => '昵称已被占用']);
+
+        // Proves the address belongs to whoever is registering. Deliberately after
+        // the uniqueness checks: checkCode() consumes the code when it succeeds, so
+        // running it first would burn a valid code on a request that was only ever
+        // going to fail with "邮箱已被占用".
+        $this->code->checkCode($this->code::REGISTER, $data['email'], (int) $data['code']);
 
         $user->setTrust(['email', 'mobile', 'sex', 'name']);
         $user->setTrustFields($data);
@@ -214,14 +221,49 @@ class User extends AbstractController
     }
 
     /**
+     * Mail a registration code to an address.
+     *
+     * Unauthenticated - there is no account yet - so the address to use arrives in
+     * the query string. Read from the query explicitly: App\Service\Request
+     * ::getData() only looks at a JSON body or POST parameters, and folding query
+     * parameters into it would break every validator that refuses extra fields.
+     *
+     * @Route("/register/code", methods={"GET"}, name="registerCode")
+     * @param Request $request
+     * @throws InvalidArgumentException
+     * @throws Exception
+     */
+    public function registerCode(Request $request)
+    {
+        $data = ['email' => $request->getRequest()->query->get('email')];
+
+        (new RegisterCode())->check($data);
+
+        if ($this->userRepository->findOneBy(['email' => $data['email']])) {
+            throw new Used(['message' => '邮箱已被占用']);
+        }
+
+        $this->code->sendCode($this->code::REGISTER, $data['email'], $data['email']);
+
+        throw new Success(['message' => '发送成功']);
+    }
+
+    /**
      * @Route("/password/code", methods={"GET"}, name="changePasswordCode")
      * @param Token $token
      * @throws InvalidArgumentException
      */
     public function changePasswordCode(Token $token)
     {
-        $uid = $token->getCurrentTokenKey('id');
-        $this->code->sendCode($this->code::CHANGE_PASSWORD, $uid);
+        $uid  = $token->getCurrentTokenKey('id');
+        $user = $this->userRepository->find($uid);
+
+        // The lookup used to live in the notification handler, which returned
+        // quietly when it found nothing: the caller was told 发送成功 and no mail
+        // was sent. Here a missing account is reported instead.
+        if (empty($user)) throw new Miss(['message' => '用户不存在']);
+
+        $this->code->sendCode($this->code::CHANGE_PASSWORD, (string) $uid, $user->getEmail(), $user->getName());
 
         throw new Success(['message' => '发送成功']);
     }
@@ -239,7 +281,7 @@ class User extends AbstractController
         $data = $request->getData();
 
         (new ChangePassword())->check($data);
-        $this->code->checkCode($this->code::CHANGE_PASSWORD, $uid, $data['code']);
+        $this->code->checkCode($this->code::CHANGE_PASSWORD, (string) $uid, (int) $data['code']);
 
         $user = $this->userRepository->find($uid);
 

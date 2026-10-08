@@ -28,14 +28,19 @@ class VerificationCode
      * The code is six digits, so 800,000 values, and checkCode() used to leave
      * the cached code in place on every failure with nothing counting the
      * attempts - the whole code space could be walked for as long as the code
-     * lived (300s for a password change). A single client would have to sustain
-     * ~2,700 requests/second to get through that, so it is not a trivial attack,
-     * but nothing at all stood in the way of one that could.
+     * lived. A single client would have to sustain ~1,100 requests/second
+     * (register, 720s) or ~2,700 (password change, 300s) to get through that, so
+     * it is not a trivial attack, but nothing at all stood in the way of one that
+     * could.
      *
-     * Note the two things that already limited this, so the fix is not
-     * over-stated: both call sites require a valid JWT for the account being
-     * changed, and sendCode() refuses to issue a second code while one is still
-     * live. It is a second-confirmation step, not a pre-auth one.
+     * The two flows carry very different exposure, so do not read this limit as
+     * equally important to both:
+     *
+     *   CHANGE_PASSWORD  both call sites take the uid from the caller's own JWT,
+     *                    so a guesser must already hold the victim's token.
+     *   REGISTER         both call sites are unauthenticated - anyone can request
+     *                    a code for any address, and the limit here is the only
+     *                    thing bounding guesses against it.
      */
     const MAX_ATTEMPTS = 5;
 
@@ -88,17 +93,34 @@ class VerificationCode
     }
 
     /**
+     * Issue a code for $subject and mail it to $email.
+     *
+     * $subject is what the code is bound to, and what is held to it later: the
+     * account uid when changing a password, the email address when registering
+     * (there is no account yet). It is only ever used to build a cache key.
+     *
+     * $email and $name are the recipient. They travel with the notification
+     * rather than being looked up from it, because on the register path there is
+     * no user row to look up yet - the handler used to resolve the recipient from
+     * the uid and silently send nothing when that failed.
+     *
      * @param string $type
-     * @param int    $uid
+     * @param string $subject
+     * @param string $email
+     * @param string $name
      * @throws \Psr\Cache\InvalidArgumentException
      * @throws \Exception
      */
-    public function sendCode (string $type, int $uid)
+    public function sendCode (string $type, string $subject, string $email, string $name = '')
     {
-        $format = $this->getType($type);
-        if (empty($format)) throw new \Exception('验证码type错误');
-        $item = $this->cache->getItem(sprintf($format, $uid));
+        $key  = $this->cacheKey($type, $subject);
+        $item = $this->cache->getItem($key);
 
+        // One live code per subject. Note the flip side on the register path,
+        // which is unauthenticated: whoever asks first decides when the next code
+        // may be requested, so a third party can hold an address's slot for the
+        // whole TTL. Bounding that needs rate limiting, which this project has
+        // none of anywhere.
         if ($item->isHit()) throw new Locked(['message' => '验证码已发送，请稍后再试']);
 
         // random_int() rather than rand(): this is a security code, and rand() is
@@ -117,54 +139,52 @@ class VerificationCode
         // A fresh code starts with a clean slate: without this, an earlier code's
         // failures would carry over and the new one could be locked before it was
         // ever tried.
-        $this->cache->deleteItem($this->attemptsKey($format, $uid));
+        $this->cache->deleteItem($this->attemptsKey($type, $subject));
 
-        $this->bus->dispatch(new VerificationCodeNotification(compact('type', 'uid', 'code', 'from', 'time')));
+        $this->bus->dispatch(new VerificationCodeNotification(compact('type', 'email', 'name', 'code', 'from', 'time')));
     }
 
     /**
      * @param string $type
-     * @param int    $uid
+     * @param string $subject
      * @param int    $code
      * @return bool
      * @throws \Psr\Cache\InvalidArgumentException
      * @throws \Exception
      */
-    public function checkCode (string $type, int $uid, int $code)
+    public function checkCode (string $type, string $subject, int $code)
     {
-        $format = $this->getType($type);
-        if (empty($format)) throw new \Exception('验证码type错误');
-        $item = $this->cache->getItem(sprintf($format, $uid));
+        $item = $this->cache->getItem($this->cacheKey($type, $subject));
         if (empty($item->isHit())) throw new Miss(['message' => '请获取验证码']);
 
         if (intval($item->get()) !== $code) {
-            $this->countFailedAttempt($format, $uid, $this->getExpires($type));
+            $this->countFailedAttempt($type, $subject, $this->getExpires($type));
             throw new Parameter(['message' => '验证码错误']);
         }
 
-        $this->cache->deleteItem(sprintf($format, $uid));
-        $this->cache->deleteItem($this->attemptsKey($format, $uid));
+        $this->cache->deleteItem($this->cacheKey($type, $subject));
+        $this->cache->deleteItem($this->attemptsKey($type, $subject));
         return true;
     }
 
     /**
      * Record a wrong guess and throw the code away once there have been too many.
      *
-     * @param string    $format
-     * @param int       $uid
+     * @param string    $type
+     * @param string    $subject
      * @param float|int $ttl
      * @throws \Psr\Cache\InvalidArgumentException
      */
-    private function countFailedAttempt (string $format, int $uid, $ttl): void
+    private function countFailedAttempt (string $type, string $subject, $ttl): void
     {
-        $key      = $this->attemptsKey($format, $uid);
+        $key      = $this->attemptsKey($type, $subject);
         $attempts = $this->cache->getItem($key);
         $count    = ($attempts->isHit() ? (int) $attempts->get() : 0) + 1;
 
         if ($count >= self::MAX_ATTEMPTS) {
             // Burn the code so guessing cannot continue; the caller has to go
             // through sendCode() again, which is where the resend lock applies.
-            $this->cache->deleteItem(sprintf($format, $uid));
+            $this->cache->deleteItem($this->cacheKey($type, $subject));
             $this->cache->deleteItem($key);
 
             throw new Locked(['message' => '验证码错误次数过多，请重新获取']);
@@ -177,13 +197,41 @@ class VerificationCode
     }
 
     /**
-     * @param string $format
-     * @param int    $uid
+     * The cache entry a subject's code lives in.
+     *
+     * The subject is hashed rather than embedded. PSR-6 reserves {}()/\@: in keys
+     * and an email address contains '@', so putting it in raw makes the cache
+     * adapter throw; hashing also bounds the key length, which an address does
+     * not. The cost is that the key is no longer readable in Redis.
+     *
+     * @param string $type
+     * @param string $subject
      * @return string
+     * @throws \Exception
      */
-    private function attemptsKey (string $format, int $uid): string
+    private function cacheKey (string $type, string $subject): string
     {
-        return sprintf($format, $uid) . '_attempts';
+        $format = $this->getType($type);
+        if (empty($format)) throw new \Exception('验证码type错误');
+
+        // Trimmed and lower-cased before hashing. On the register path the subject
+        // is an email address and it arrives from two different places: the query
+        // string when the code is requested, the request body when it is redeemed.
+        // Normalising here means "A@Example.com" and "a@example.com" share one
+        // code, which is what someone typing their address twice expects. A no-op
+        // for the uid the password-change path passes.
+        return sprintf($format, hash('sha256', strtolower(trim($subject))));
+    }
+
+    /**
+     * @param string $type
+     * @param string $subject
+     * @return string
+     * @throws \Exception
+     */
+    private function attemptsKey (string $type, string $subject): string
+    {
+        return $this->cacheKey($type, $subject) . '_attempts';
     }
 
     /**

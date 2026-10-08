@@ -4,6 +4,7 @@ namespace App\Tests\Validator;
 
 use App\Exception\Parameter;
 use App\Validator\Register;
+use App\Validator\RegisterCode;
 use App\Validator\UserToken;
 use PHPUnit\Framework\TestCase;
 
@@ -31,7 +32,7 @@ final class AuthValidatorsTest extends TestCase
 
     public function testRegisterRequiresEveryField(): void
     {
-        foreach (['name', 'mobile', 'email', 'sex', 'password'] as $field) {
+        foreach (['name', 'mobile', 'email', 'sex', 'password', 'code'] as $field) {
             $payload = $this->registerPayload();
             unset($payload[$field]);
 
@@ -39,6 +40,23 @@ final class AuthValidatorsTest extends TestCase
 
             $this->assertStringContainsString($field, $message, "missing '$field' should be reported by name");
         }
+    }
+
+    public function testRegisterRequiresAWellFormedEmailCode(): void
+    {
+        foreach (['', '12345', '1234567', 'abcdef', '12345a'] as $bad) {
+            $message = $this->assertRejected(Register::class, $this->registerPayload(['code' => $bad]));
+
+            $this->assertStringContainsString('验证码', $message, "'$bad' should be refused as a code");
+        }
+    }
+
+    public function testTheRegisterCodeRequestOnlyNeedsAnEmail(): void
+    {
+        $this->assertAccepted(RegisterCode::class, ['email' => 'somebody@example.com']);
+        $this->assertRejected(RegisterCode::class, []);
+        $this->assertRejected(RegisterCode::class, ['email' => '']);
+        $this->assertRejected(RegisterCode::class, ['email' => 'not-an-email']);
     }
 
     public function testRegisterRejectsABadMobileAndEmail(): void
@@ -87,6 +105,7 @@ final class AuthValidatorsTest extends TestCase
             'email'    => 'somebody@example.com',
             'sex'      => 'MAN',
             'password' => self::GOOD_PASSWORD,
+            'code'     => '123456',
         ];
     }
 

@@ -41,6 +41,18 @@ class Register extends Base
                     'message' => '请输入正确的邮箱地址'
                 ])
             ]),
+            // The code mailed by GET /user/register/code. Register sets
+            // allowExtraFields = false, so an undeclared 'code' would be rejected
+            // outright rather than ignored.
+            'code'     => new Assert\Required([
+                new Assert\NotBlank([
+                    'message' => '请输入邮箱验证码'
+                ]),
+                new Assert\Regex([
+                    'pattern' => '/^[0-9]{6}$/',
+                    'message' => '邮箱验证码不正确'
+                ])
+            ]),
         ];
     }
 

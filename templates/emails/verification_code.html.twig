@@ -1,4 +1,4 @@
-<h1> Hi, {{ name }}!</h1>
+<h1> Hi{{ name ? ', ' ~ name : '' }}!</h1>
 
 <p>
     {{ description }}，您的验证码是

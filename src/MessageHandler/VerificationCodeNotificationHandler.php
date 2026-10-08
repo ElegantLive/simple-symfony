@@ -10,7 +10,6 @@ namespace App\MessageHandler;
 
 
 use App\Message\VerificationCodeNotification;
-use App\Repository\UserRepository;
 use App\Service\VerificationCode;
 use Symfony\Bridge\Twig\Mime\TemplatedEmail;
 use Symfony\Component\Mailer\MailerInterface;
@@ -18,10 +17,6 @@ use Symfony\Component\Messenger\Handler\MessageHandlerInterface;
 
 class VerificationCodeNotificationHandler implements MessageHandlerInterface
 {
-    /**
-     * @var UserRepository
-     */
-    private $userRepository;
     /**
      * @var MailerInterface
      */
@@ -34,13 +29,16 @@ class VerificationCodeNotificationHandler implements MessageHandlerInterface
 
     /**
      * VerificationCodeNotificationHandler constructor.
-     * @param UserRepository  $userRepository
+     *
+     * No UserRepository: the recipient is part of the message. Resolving it from
+     * a uid could not work for registration, where no account exists yet, and it
+     * failed silently when the lookup came back empty.
+     *
      * @param MailerInterface $mailer
      */
-    public function __construct (UserRepository $userRepository, MailerInterface $mailer)
+    public function __construct (MailerInterface $mailer)
     {
-        $this->userRepository = $userRepository;
-        $this->mailer         = $mailer;
+        $this->mailer = $mailer;
     }
 
     /**
@@ -49,18 +47,15 @@ class VerificationCodeNotificationHandler implements MessageHandlerInterface
      */
     public function __invoke (VerificationCodeNotification $codeNotification)
     {
-        $user = $this->userRepository->find($codeNotification->getUid());
-        if (empty($user)) return;
-
         $minutes = $codeNotification->getTime() / 60;
         $title   = $this->titleMap[$codeNotification->getType()];
 
         $email = (new TemplatedEmail())->from($codeNotification->getFrom())
-            ->to($user->getEmail())
+            ->to($codeNotification->getEmail())
             ->subject($title)
             ->htmlTemplate('emails/verification_code.html.twig')
             ->context([
-                'name'        => $user->getName(),
+                'name'        => $codeNotification->getName(),
                 'description' => $title,
                 'minutes'     => $minutes,
                 'code'        => $codeNotification->getCode()

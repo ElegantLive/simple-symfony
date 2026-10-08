@@ -12,18 +12,27 @@ namespace App\Message;
 class VerificationCodeNotification
 {
     /**
+     * The recipient travels with the message rather than being looked up from a
+     * uid by the handler. The handler used to resolve the user from the uid and
+     * return silently when there was none, which meant the register flow - where
+     * no account exists yet - would report success and send nothing.
+     *
      * @var array
      */
-    private $accessArray = ['type', 'uid', 'code', 'from', 'time'];
+    private $accessArray = ['type', 'email', 'name', 'code', 'from', 'time'];
 
     /**
      * @var string
      */
     private $type;
     /**
-     * @var int
+     * @var string
      */
-    private $uid;
+    private $email;
+    /**
+     * @var string
+     */
+    private $name;
     /**
      * @var int
      */
@@ -57,19 +66,30 @@ class VerificationCodeNotification
     }
 
     /**
-     * @return int
+     * @return string
      */
-    public function getCode (): int
+    public function getEmail (): string
     {
-        return $this->code;
+        return $this->email;
+    }
+
+    /**
+     * May be empty: on the register path the account does not exist yet, so there
+     * is no name to greet by.
+     *
+     * @return string
+     */
+    public function getName (): string
+    {
+        return $this->name;
     }
 
     /**
      * @return int
      */
-    public function getUid (): int
+    public function getCode (): int
     {
-        return $this->uid;
+        return $this->code;
     }
 
     /**
