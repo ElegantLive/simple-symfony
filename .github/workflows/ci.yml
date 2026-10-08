@@ -88,27 +88,47 @@ jobs:
         # A truncated download is a real failure mode (curl exits 18, and it has
         # happened by hand) and so is a bad minute on the network: --retry only
         # covers a curl error, not a transfer that reports success and delivers a
-        # short file. So the whole download-and-verify is retried, and the hash is
-        # what decides whether an attempt counts. The version-pinned URL is
-        # immutable, which is what makes pinning the hash meaningful.
+        # short file. So the whole download-and-verify is retried, against two
+        # sources, and the hash is what decides whether an attempt counts. The
+        # version-pinned URLs are immutable, which is what makes pinning the hash
+        # meaningful.
+        #
+        # set +e for the whole step: under the default -e any single unguarded
+        # command that fails ends the step with no explanation at all, which is
+        # what happened here - the failure showed up as a bare "exit code 1" with
+        # no annotation, because the download had actually succeeded and something
+        # after it had not.
         run: |
+          set +e
+
+          sources="
+          https://getcomposer.org/download/1.10.27/composer.phar
+          https://github.com/composer/composer/releases/download/1.10.27/composer.phar
+          "
+          expected=230d28fb29f3c6c07ab2382390bef313e36de17868b2bd23b2e070554cae23d2
+          phar="$RUNNER_TEMP/composer1.phar"
+
           ok=no
-          for attempt in 1 2 3 4 5; do
-            if curl -sSL --retry 5 --retry-delay 3 --retry-connrefused --retry-all-errors --max-time 300 \
-                 -o "$RUNNER_TEMP/composer1.phar" https://getcomposer.org/download/1.10.27/composer.phar \
-               && echo "230d28fb29f3c6c07ab2382390bef313e36de17868b2bd23b2e070554cae23d2  $RUNNER_TEMP/composer1.phar" | sha256sum -c -; then
-              ok=yes
-              break
-            fi
-            echo "attempt $attempt did not produce a verified composer1.phar; retrying"
+          for attempt in 1 2 3; do
+            for source in $sources; do
+              rm -f "$phar"
+              curl -sSL --retry 5 --retry-delay 3 --retry-connrefused --retry-all-errors --max-time 300 \
+                -o "$phar" "$source"
+              got=$(sha256sum "$phar" 2>/dev/null | cut -d' ' -f1)
+              size=$(wc -c < "$phar" 2>/dev/null || echo 0)
+              echo "attempt $attempt $source -> ${size} bytes, sha256 ${got:-none}"
+              if [ "$got" = "$expected" ]; then ok=yes; break 2; fi
+            done
             sleep 5
           done
 
-          [ "$ok" = yes ] || { echo "::error::could not download and verify Composer 1"; exit 1; }
+          version=$(php "$phar" --version 2>&1 | head -1)
+          echo "phar=$phar ok=$ok version=$version"
 
-          php "$RUNNER_TEMP/composer1.phar" --version
-          php "$RUNNER_TEMP/composer1.phar" --version | grep -q '^Composer version 1\.' \
-            || { echo "::error::expected Composer 1.x, the lock cannot be installed otherwise"; exit 1; }
+          if [ "$ok" != yes ] || ! printf '%s' "$version" | grep -q '^Composer version 1\.'; then
+            echo "::error::could not obtain a verified Composer 1 ($version); the lock cannot be installed otherwise"
+            exit 1
+          fi
 
       - name: Install dependencies
         # --no-scripts: the auto-scripts boot the kernel (cache:clear,
@@ -146,21 +166,27 @@ jobs:
         # read from a signed release listing - phar.phpunit.de publishes no
         # .sha256 file for these.
         run: |
+          set +e
+
+          expected=6b5235f282c6ccab3674ac27c5b1ddbd1da838e74bf07002ddcfd030d31298d7
           ok=no
           for attempt in 1 2 3 4 5; do
-            if curl -sSL --retry 5 --retry-delay 3 --retry-connrefused --retry-all-errors --max-time 300 \
-                 -o phpunit.phar https://phar.phpunit.de/phpunit-9.6.38.phar \
-               && echo "6b5235f282c6ccab3674ac27c5b1ddbd1da838e74bf07002ddcfd030d31298d7  phpunit.phar" | sha256sum -c -; then
-              ok=yes
-              break
-            fi
-            echo "attempt $attempt did not produce a verified phpunit.phar; retrying"
+            rm -f phpunit.phar
+            curl -sSL --retry 5 --retry-delay 3 --retry-connrefused --retry-all-errors --max-time 300 \
+              -o phpunit.phar https://phar.phpunit.de/phpunit-9.6.38.phar
+            got=$(sha256sum phpunit.phar 2>/dev/null | cut -d' ' -f1)
+            echo "attempt $attempt -> $(wc -c < phpunit.phar 2>/dev/null || echo 0) bytes, sha256 ${got:-none}"
+            if [ "$got" = "$expected" ]; then ok=yes; break; fi
             sleep 5
           done
 
-          [ "$ok" = yes ] || { echo "::error::could not download and verify PHPUnit"; exit 1; }
+          version=$(php phpunit.phar --version 2>&1 | head -1)
+          echo "ok=$ok version=$version"
 
-          php phpunit.phar --version
+          if [ "$ok" != yes ] || ! printf '%s' "$version" | grep -q '^PHPUnit 9\.6'; then
+            echo "::error::could not obtain a verified PHPUnit phar ($version)"
+            exit 1
+          fi
 
       - name: Give the kernel a .env to load
         # .env is gitignored and holds real credentials, so a fresh checkout has
