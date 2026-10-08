@@ -29,29 +29,46 @@ jobs:
           # every run slower.
           coverage: none
 
-      - name: Pin Composer 1
+      - name: Diagnostics
+        # Cheap, and it means a failure in this job explains itself instead of
+        # needing a guess from the outside.
+        run: |
+          echo "user          : $(id -un) (uid $(id -u))"
+          echo "php           : $(php -v | head -1)"
+          echo "composer PATH : $(command -v composer || echo none)"
+          composer --version 2>/dev/null | head -1 || true
+          echo "RUNNER_TEMP   : $RUNNER_TEMP (writable: $([ -w "$RUNNER_TEMP" ] && echo yes || echo no))"
+          echo "workdir       : $PWD"
+
+      - name: Fetch Composer 1
         # composer.lock pins symfony/flex v1.4.5 and ocramius/package-versions
         # 1.4.0, both of which declare "composer-plugin-api": "^1.0". Composer 2
-        # provides 2.2.0 and refuses the lock outright, so CI has to use Composer 1
-        # for the same reason docker/php/Dockerfile does.
+        # provides 2.2.0 and refuses the lock outright, so this must be Composer 1,
+        # for the same reason docker/php/Dockerfile pins it.
+        #
+        # Fetched into $RUNNER_TEMP and always invoked by absolute path rather
+        # than installed onto PATH: that avoids needing write access to
+        # /usr/local/bin, and it avoids the risk of setup-php's own composer (v2)
+        # still winning the PATH lookup and silently being the one that runs.
         run: |
-          curl -sSLo /usr/local/bin/composer https://getcomposer.org/download/1.10.27/composer.phar
-          chmod +x /usr/local/bin/composer
-          composer --version
+          curl -sSLo "$RUNNER_TEMP/composer1.phar" https://getcomposer.org/download/1.10.27/composer.phar
+          php "$RUNNER_TEMP/composer1.phar" --version
+          php "$RUNNER_TEMP/composer1.phar" --version | grep -q '^Composer version 1\.' \
+            || { echo "::error::expected Composer 1.x, the lock cannot be installed otherwise"; exit 1; }
 
       - name: Install dependencies
         # --no-scripts: the auto-scripts boot the kernel (cache:clear,
         # assets:install), which needs a .env and the gitignored
         # config/certificate keys that CI does not have. Nothing in the suite
         # needs a booted kernel, so they are simply skipped.
-        run: composer install --no-scripts --no-interaction --prefer-dist --no-progress
+        run: php "$RUNNER_TEMP/composer1.phar" install --no-scripts --no-interaction --prefer-dist --no-progress
 
       - name: composer.json is still valid
         # --no-check-lock on purpose. The lock has been stale for a long time
         # ("not up to date with the latest changes in composer.json"), which is a
         # genuine pre-existing problem, but without this flag the step exits 2 on
         # every run and the signal drowns in the noise. Worth fixing separately.
-        run: composer validate --no-check-publish --no-check-lock
+        run: php "$RUNNER_TEMP/composer1.phar" validate --no-check-publish --no-check-lock
 
       - name: Every PHP file parses
         run: |
