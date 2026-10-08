@@ -88,9 +88,12 @@ $COMPOSE run --rm --no-deps app \
 # worker gets its queue table without any extra step.
 #
 # Note: it always reports one query, `ALTER TABLE user CHANGE sex sex
-# enum('MAN', 'WOMEN')`. That is a cosmetic round-trip - the entity's
-# columnDefinition has a space after the comma and MySQL normalises it away - so
-# it never converges. Harmless, and not something this stack introduces.
+# enum('MAN','WOMEN')`. That is not a real difference: `columnDefinition` on the
+# entity overrides every other column attribute when DDL is generated, so the
+# implicit NOT NULL never reaches the database and the column stays nullable,
+# while DBAL's Comparator (which ignores columnDefinition entirely and compares
+# notnull) sees a mismatch forever. Applying it changes nothing. See
+# docker/README.md for the two ways to make it go away.
 echo "==> bootstrapping the database schema from the entity mapping"
 $COMPOSE run --rm --no-deps -e RUN_BOOT_TASKS=0 app \
     php bin/console doctrine:schema:update --force --env="${APP_ENV:-dev}" --no-interaction

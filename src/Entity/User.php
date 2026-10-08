@@ -66,7 +66,7 @@ class User extends Base
     private $rand;
 
     /**
-     * @ORM\Column(type="string", columnDefinition="enum('MAN', 'WOMEN')")
+     * @ORM\Column(type="string", columnDefinition="enum('MAN','WOMEN')")
      */
     private $sex = 'MAN';
 
