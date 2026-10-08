@@ -38,6 +38,59 @@ services:
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones
 
+    # ---------------------------------------------------------------------------
+    # Exception -> JSON rendering.
+    #
+    # This project carries TWO implementations of the same thing, and you pick one:
+    #
+    #   (A) App\EventSubscriber\Exception   <- ACTIVE
+    #   (B) App\EventListener\Exception     <- commented out below, kept as an option
+    #
+    # They hold the same logic; only the namespace and the handler method name
+    # differ (onExceptionEvent() vs onKernelException()). Both produce the same
+    # response - swapping them was tested and returns byte-identical JSON.
+    #
+    # Why (B) needs a tag and (A) does not:
+    #   (A) implements EventSubscriberInterface and declares getSubscribedEvents(),
+    #       so `autoconfigure: true` above tags it with no configuration at all.
+    #   (B) is a plain class. Autoconfigure only adds kernel.event_subscriber to
+    #       EventSubscriberInterface implementations, so (B) never self-registers
+    #       and needs the explicit tag below.
+    #   For a listener the tag names the EVENT, not the method: Symfony derives the
+    #   method as 'on' + the camel-cased event name, so `event: kernel.exception`
+    #   resolves to onKernelException(). A subscriber names its own method in
+    #   getSubscribedEvents(), which is why (A) can call it something else.
+    #
+    # TO SWITCH FROM (A) TO (B), all three steps - the third one is easy to miss:
+    #   1. uncomment the block below
+    #   2. comment out the App\EventSubscriber\Exception definition further down
+    #   3. add EventSubscriber/Exception.php to the `exclude` list of the App\:
+    #      resource near the top of this file
+    #
+    # Step 3 is not optional. Removing only the definition (step 2) leaves the class
+    # still auto-registered by `App\:`, and since its constructor takes untyped
+    # $env/$from/$dev that autowire cannot resolve, the container fails to compile:
+    #   Cannot autowire service "App\EventSubscriber\Exception": argument "$env" of
+    #   method "__construct()" has no type-hint, you should configure its value
+    #   explicitly.
+    # (Alternatively keep the definition, keep its `arguments:` and set
+    # `autoconfigure: false` on it - that also stops it self-registering.)
+    #
+    # Leaving BOTH wired up is not an error: the container compiles and the response
+    # is rendered once, because ExceptionEvent inherits setResponse() from
+    # GetResponseEvent and that calls stopPropagation(), so the first handler to
+    # build a response ends the chain. But only one of them ever runs, and which is
+    # decided by registration order - so editing the other one silently does
+    # nothing. Keep exactly one wired.
+    # ---------------------------------------------------------------------------
+#    App\EventListener\Exception:
+#        tags:
+#            - { name: kernel.event_listener, event: kernel.exception }
+#        arguments:
+#            $env: '%env(APP_ENV)%'
+#            $from: '%env(FROM_EMAIL)%'
+#            $dev: '%env(DEV_EMAIL)%'
+
     App\EventSubscriber\Exception:
         tags:
             - { name: kernel.event_subscriber, event: kernel.exception }
