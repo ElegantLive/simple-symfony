@@ -122,22 +122,28 @@ jobs:
           log="$RUNNER_TEMP/composer-fetch.log"
           : > "$log"
 
-          ok=no
-          if [ -f "$phar" ] && [ "$(sha256sum "$phar" | cut -d' ' -f1)" = "$expected" ]; then
-            ok=yes
-            echo "reusing the cached composer1.phar" | tee -a "$log"
-          fi
+          # A download only counts when the file is there, matches the hash, AND
+          # actually runs. The middle check alone is not enough: one run produced a
+          # file with exactly the right sha256 whose `php composer.phar --version`
+          # printed nothing at all, which failed the step with no useful symptom.
+          works() {
+            [ -f "$phar" ] || return 1
+            [ "$(sha256sum "$phar" 2>/dev/null | cut -d' ' -f1)" = "$expected" ] || return 1
+            case "$(php "$phar" --version 2>&1 | head -1)" in
+              'Composer version 1.'*) return 0 ;;
+              *) return 1 ;;
+            esac
+          }
 
+          ok=no
           for attempt in 1 2 3; do
-            [ "$ok" = yes ] && break
+            if works; then ok=yes; echo "using a verified composer1.phar" | tee -a "$log"; break; fi
             for source in $sources; do
               rm -f "$phar"
               curl -sSL --retry 5 --retry-delay 3 --retry-connrefused --retry-all-errors --max-time 300 \
                 -o "$phar" "$source" 2>>"$log"
-              got=$(sha256sum "$phar" 2>/dev/null | cut -d' ' -f1)
-              size=$(wc -c < "$phar" 2>/dev/null || echo 0)
-              echo "attempt $attempt $source -> ${size} bytes, sha256 ${got:-none}" | tee -a "$log"
-              if [ "$got" = "$expected" ]; then ok=yes; break; fi
+              echo "attempt $attempt $source -> $(wc -c < "$phar" 2>/dev/null || echo 0) bytes, sha256 $(sha256sum "$phar" 2>/dev/null | cut -d' ' -f1)" | tee -a "$log"
+              if works; then ok=yes; break; fi
             done
             [ "$ok" = yes ] && break
             sleep 5
@@ -146,7 +152,16 @@ jobs:
           version=$(php "$phar" --version 2>&1 | head -1)
           echo "phar=$phar ok=$ok version=$version" | tee -a "$log"
 
-          if [ "$ok" != yes ] || ! printf '%s' "$version" | grep -q '^Composer version 1\.'; then
+          if [ "$ok" != yes ]; then
+            php "$phar" --version > "$RUNNER_TEMP/composer-run.log" 2>&1
+            run_status=$?
+            {
+              echo "php: $(php -v | head -1)"
+              echo "phar: $(ls -l "$phar" 2>&1)"
+              echo "run exit: $run_status"
+              echo "run output: $(head -c 300 "$RUNNER_TEMP/composer-run.log")"
+              tail -c 400 "$log"
+            } >> "$log"
             while IFS= read -r line; do
               echo "::error::composer fetch: $line"
             done < <(tail -c 900 "$log")
