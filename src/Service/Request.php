@@ -57,7 +57,12 @@ class Request
     public function getData ()
     {
         if (false !== strpos($this->getRequest()->getContentType(), 'json')) {
-            return $this->payload;
+            // Never null. A JSON request with an empty (or undecodable) body used to
+            // hand null to the controllers' validators, and Validator\Base::check()
+            // takes an array - so the TypeError surfaced as a 500 instead of the
+            // "field X is missing" 400 that the very same request produces when it
+            // carries no Content-Type at all.
+            return is_array($this->payload) ? $this->payload : [];
         } else {
             return $this->getRequest()->request->all();
         }

@@ -209,12 +209,18 @@ class Article extends AbstractController
             ->getQuery()
             ->getResult();
 
-        $count = $this->articleRepository->createQueryBuilder('t')
-            ->where("t.user = :userId")
-            ->setParameter('userId', $currentUser->getId())
-            ->select('count(1) as _c')
-            ->getQuery()
-            ->getArrayResult();
+        // The count is only narrowed to the current user when there is one. This
+        // endpoint is deliberately usable without a token - the try/catch above
+        // leaves $currentUser null - and the count query used to dereference it
+        // unconditionally, so an anonymous GET /article/list answered 500.
+        $countQb = $this->articleRepository->createQueryBuilder('t')
+            ->select('count(1) as _c');
+
+        if ($currentUser) {
+            $countQb->where("t.user = :userId")->setParameter('userId', $currentUser->getId());
+        }
+
+        $count = $countQb->getQuery()->getArrayResult();
 
         $total = $count ? (int)$count[0]['_c']: 0;
 

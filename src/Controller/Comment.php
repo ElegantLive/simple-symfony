@@ -213,10 +213,10 @@ class Comment extends AbstractController
     /**
      * @Route("/{commentId}", methods={"DELETE"}, name="deleteArticleComment")
      * @param Token $token
-     * @param int   $articleId
+     * @param int   $id
      * @param int   $commentId
      */
-    public function disable (Token $token, int $articleId, int $commentId)
+    public function disable (Token $token, int $id, int $commentId)
     {
         $user = $token->getCurrentUser();
 
@@ -227,7 +227,12 @@ class Comment extends AbstractController
         $article = $comment->getArticle();
         if (empty($article)) throw new Miss();
         if ($article->isDeleted()) throw new Gone();
-        if ($article->getId() !== (int) $articleId) throw new Forbidden();
+        // The route placeholder is {id}, from the class-level @Route. The argument
+        // used to be named $articleId, which no placeholder ever supplied, so
+        // Symfony could not resolve it and the route answered 500 with
+        // "requires that you provide a value for the $articleId argument" no matter
+        // what the caller sent. See the report.
+        if ($article->getId() !== $id) throw new Forbidden();
 
         $author = $article->getUser();
 

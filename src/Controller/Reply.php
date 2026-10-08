@@ -114,7 +114,12 @@ class Reply extends AbstractController
             if (array_key_exists($array_key, $params) === false) continue;
             if (in_array($array_key, ['page', 'size'])) $params[$array_key] = (int)$params[$array_key];
 
-            $array_key       = $params[$array_key];
+            // $$array_key, like the article, comment and tag pagers. Writing
+            // $array_key instead overwrote the loop variable with the value and then
+            // added it to $data as a key of its own, so a perfectly ordinary
+            // ?page=1 reached the validator as the extra field "1" and came back
+            // 400 请移除额外的字段 1.
+            $$array_key       = $params[$array_key];
             $data[$array_key] = $params[$array_key];
         }
 

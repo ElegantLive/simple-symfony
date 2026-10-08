@@ -144,12 +144,36 @@ class User extends AbstractController
         $minId = $qb->select('min(t.id)')->getQuery()->getSingleScalarResult();
         $maxId = $qb->select('max(t.id)')->getQuery()->getSingleScalarResult();
 
-        $randNum = 3;
+        // An empty table makes min() and max() null, and bcsub(null, null) below
+        // then produced a predicate that matched nothing, so $randItem was null and
+        // the dereference on it was a 500.
+        if (null === $minId || null === $maxId) throw new Success(['data' => []]);
+
+        // How many ids there are to hand out. The loop below only stops once it has
+        // collected three DISTINCT ids, so asking for three while two accounts
+        // exist never terminated: the request hung until PHP's max_execution_time
+        // killed it, and because the built-in server is single-threaded it took
+        // every later request with it.
+        $available = (int) $this->userRepository->createQueryBuilder('t')
+            ->select('count(t.id)')
+            ->getQuery()
+            ->getSingleScalarResult();
+
+        if ($available < 1) throw new Success(['data' => []]);
+
+        $randNum = min(3, $available);
 
         $results = [];
         $randQb  = $this->userRepository->createQueryBuilder('y');
 
-        while (true) {
+        // Bounded as well as capped: random ids over a table with gaps (soft
+        // deletes leave them) can keep landing on a row that is already in
+        // $results, or on nothing at all.
+        $attempts = 0;
+
+        while (count($results) < $randNum) {
+            if (++$attempts > 100) break;
+
             $randItem = $randQb->where('y.id >= round(rand() * :randNum + :minId)')
                 ->setParameters([
                     'randNum' => bcsub($maxId, $minId),
@@ -159,12 +183,12 @@ class User extends AbstractController
                 ->getQuery()
                 ->getOneOrNullResult();
 
+            if (null === $randItem) continue;
+
             $id = $randItem->getId();
             if (in_array($id, $results)) continue;
 
             array_push($results, $id);
-
-            if (count($results) >= $randNum) break;
         }
 
         throw new Success(['data' => $results]);
