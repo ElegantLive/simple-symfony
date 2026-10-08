@@ -1,0 +1,19 @@
+[mysqld]
+# config/packages/doctrine.yaml pins server_version 5.7 and declares
+# utf8mb4 / utf8mb4_unicode_ci as the default table options, so the server has
+# to agree or Doctrine will create tables with a different collation.
+character-set-server = utf8mb4
+collation-server = utf8mb4_unicode_ci
+
+# PHP 7.3's PDO_MySQL predates caching_sha2_password (MySQL 8 default); pin the
+# native plugin so the connection works even if the image tag changes.
+default-authentication-plugin = mysql_native_password
+
+# The app filters/sorts on emoji-bearing user content; keep the connection sane.
+skip-character-set-client-handshake = 0
+
+[client]
+default-character-set = utf8mb4
+
+[mysql]
+default-character-set = utf8mb4

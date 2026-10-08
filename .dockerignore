@@ -1,0 +1,28 @@
+# Keep the build context small. `vendor/` is installed inside the image from
+# composer.lock, and var/ is a 260MB local cache that must never be copied in.
+#
+# Every pattern is anchored with a leading "/" so it only matches at the repo
+# root. Without the slash these would also swallow docker/.env.docker.example
+# and anything else with the same name deeper in the tree.
+
+/.git
+/.gitignore
+/.history
+/.idea
+/.vscode
+/.DS_Store
+
+/vendor
+/var
+/public/uploads
+/public/bundles
+
+/.env
+/.env.local
+/.env.local.php
+/.env.*.local
+
+/docker-compose.yml
+/docker-compose.*.yml
+/docker/README.md
+/Makefile.docker

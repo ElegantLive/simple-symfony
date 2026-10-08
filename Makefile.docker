@@ -1,0 +1,76 @@
+# Docker convenience targets.
+#
+#   make -f Makefile.docker help
+#
+# Kept in a separate file so it does not take over the repo root's `Makefile`
+# namespace. A `make` at the root still does nothing.
+
+COMPOSE ?= docker compose
+SERVICE ?= app
+
+.DEFAULT_GOAL := help
+.PHONY: help setup build up down restart logs logs-web ps shell console migrate schema-update worker-logs worker-restart cache-clear fresh reset env-check vendor-check
+
+help: ## Show this help
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) \
+		| awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-16s\033[0m %s\n", $$1, $$2}'
+
+env-check: ## Fail early if the gitignored files the stack mounts are missing
+	@test -f .env || { echo "missing .env (copy .env.docker.example to .env)"; exit 1; }
+	@test -d config/certificate/jwt || { echo "missing config/certificate/jwt (JWT/sign keys are gitignored)"; exit 1; }
+	@echo "mounted config looks good"
+
+vendor-check: ## Verify the vendor volume is populated (first run trap)
+	@$(COMPOSE) run --rm --no-deps --entrypoint test app -f vendor/autoload.php 2>/dev/null \
+		|| { echo "vendor/ is empty in the container -> run 'make -f Makefile.docker setup' first"; exit 1; }
+
+setup: ## First-time setup: build + composer install + up (safe to re-run)
+	./docker/setup.sh
+
+build: ## Build the dev image
+	$(COMPOSE) build
+
+up: env-check vendor-check ## Start the whole stack (run 'setup' first on a fresh clone)
+	$(COMPOSE) up -d --build
+
+down: ## Stop the stack (keeps volumes/data)
+	$(COMPOSE) down
+
+restart: ## Restart app + nginx + worker
+	$(COMPOSE) restart app nginx worker
+
+ps: ## Show service status
+	$(COMPOSE) ps
+
+logs: ## Tail every service
+	$(COMPOSE) logs -f --tail=100
+
+logs-web: ## Tail nginx + php-fpm only
+	$(COMPOSE) logs -f --tail=100 nginx app
+
+shell: ## Open a shell in the app container as www-data
+	$(COMPOSE) exec -u www-data $(SERVICE) sh
+
+console: ## Run bin/console (ARGS="cache:clear")
+	$(COMPOSE) exec -u www-data $(SERVICE) php bin/console $(ARGS)
+
+migrate: ## Apply migrations (KNOWN BROKEN here - two migrations both CREATE TABLE user)
+	$(COMPOSE) exec -u www-data $(SERVICE) php bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration
+
+schema-update: ## Sync the schema from the entity mapping (the path that works here)
+	$(COMPOSE) exec -u www-data $(SERVICE) php bin/console doctrine:schema:update --force --no-interaction
+
+cache-clear: ## Clear the container-side Symfony cache
+	$(COMPOSE) exec -u www-data $(SERVICE) php bin/console cache:clear
+
+worker-logs: ## Tail the messenger worker
+	$(COMPOSE) logs -f --tail=100 worker
+
+worker-restart: ## Restart the messenger worker
+	$(COMPOSE) restart worker
+
+fresh: ## Reinstall vendor/ from composer.lock (no -u: the entrypoint drops privileges itself)
+	$(COMPOSE) exec -u www-data $(SERVICE) composer install --prefer-dist --no-interaction
+
+reset: ## Stop the stack and DELETE all volumes (db data, vendor, var)
+	$(COMPOSE) down -v
